@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Certificate Transactions</title>
+</head>
+<body>
+    <h1>Latest Certificate Transactions</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Sender</th>
+                <th>Receiver</th>
+                <th>Certificate Hash</th>
+                <th>Certificate Data</th> <!-- Added for displaying certificate data -->
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody id="transaction-body"></tbody>
+    </table>
+
+    <script>
+    // Fetching transaction data
+    fetch('/api/transactions')
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById("transaction-body");
+
+            // Loop through each transaction and fetch certificate data for each
+            data.transactions.forEach(ts => {
+                // Fetch the certificate data by cert_hash
+                fetch(`/api/certificate/${ts.cert_hash}`)
+                    .then(res => res.json())
+                    .then(certData => {
+                        // Create table row with transaction and certificate data
+                        const row = `<tr>
+                            <td>${ts.sender}</td>
+                            <td>${ts.receiver}</td>
+                            <td>${ts.cert_hash}</td>
+                            <td>${certData ? JSON.stringify(certData) : 'No data found'}</td>
+                            <td>${new Date(ts.timestamp * 1000).toLocaleString()}</td>
+                        </tr>`;
+                        tbody.innerHTML += row;
+                    })
+                    .catch(err => {
+                        console.error('Error fetching certificate data:', err);
+                        const row = `<tr>
+                            <td>${ts.sender}</td>
+                            <td>${ts.receiver}</td>
+                            <td>${ts.cert_hash}</td>
+                            <td>Failed to fetch certificate</td>
+                            <td>${new Date(ts.timestamp * 1000).toLocaleString()}</td>
+                        </tr>`;
+                        tbody.innerHTML += row;
+                    });
+            });
+        })
+        .catch(err => {
+            console.error('Error fetching transactions:', err);
+        });
+    </script>
+</body>
+</html>

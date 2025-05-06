@@ -20,6 +20,8 @@ from ipv8.keyvault.crypto import default_eccrypto, ECCrypto
 from cryptography.exceptions import InvalidSignature
 from ipv8.messaging.serialization import default_serializer
 
+from webapp.web import FlaskWeb
+
 
 @dataclass
 class Transaction(DataClassPayload[1]):
@@ -41,7 +43,6 @@ class Transaction(DataClassPayload[1]):
              (bytes, "public_key")]
         )
 
-
 def verify_signature(signature: bytes, public_key: bytes, message: bytes) -> bool:
     try:
         pk = default_eccrypto.key_from_public_bin(public_key)
@@ -60,7 +61,7 @@ class BlockchainCommunity(Community, PeerObserver):
         super().__init__(settings)
         self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
         self.transactions = []
-        self.visualizer = None
+        self.web = None
         self.connection_keys = set()
 
     def on_peer_added(self, peer: Peer) -> None:
@@ -84,10 +85,11 @@ class BlockchainCommunity(Community, PeerObserver):
                 certificate_data_list = json.load(file)
 
             random_certificate =  choice(certificate_data_list)
-            certificate_data_str = json.dumps(random_certificate)
 
-            cert_hash = hashlib.sha256(certificate_data_str.encode()).hexdigest()
+            #demo hash
+            cert_hash = random_certificate.get("cert_hash")
             cert_hash = cert_hash.encode()
+
             timestamp = time()
 
             message = (
@@ -140,7 +142,7 @@ class BlockchainCommunity(Community, PeerObserver):
         })
 
 
-def start_node(developer_mode):
+def start_node(developer_mode, web_port=None):
     async def boot():
         builder = ConfigBuilder().clear_keys().clear_overlays()
         crypto = ECCrypto()
@@ -174,7 +176,14 @@ def start_node(developer_mode):
 
         ipv8 = IPv8(builder.finalize(), extra_communities={'BlockchainCommunity': BlockchainCommunity})
         await ipv8.start()
+
+        if web_port is not None:
+            community = ipv8.get_overlay(BlockchainCommunity)
+            community.web = FlaskWeb(community, port=web_port)
+            # Start the web asynchronously so it doesn't block the main event loop
+            Thread(target=community.web.start).start()
         
         await run_forever()
 
     run(boot())
+
