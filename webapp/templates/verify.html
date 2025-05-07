@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><title>Verify Certificates</title></head>
+<body>
+<h1>Pending Certificates</h1>
+<table border="1">
+    <thead>
+        <tr><th>Sender</th><th>Hash</th><th>Data</th><th>Action</th></tr>
+    </thead>
+    <tbody id="certBody"></tbody>
+</table>
+
+<script>
+fetch("/api/transactions")
+    .then(res => res.json())
+    .then(data => {
+        const tbody = document.getElementById("certBody");
+        data.transactions.forEach(tx => {
+            const row = `<tr>
+                <td>${tx.sender}</td>
+                <td>${tx.cert_hash}</td>
+                <td>${JSON.stringify(tx.certificate_data)}</td>
+                <td><button onclick="verify('${tx.cert_hash}')">Verify</button></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    });
+
+function verify(cert_hash) {
+    fetch("/api/verify_certificate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cert_hash })
+    }).then(res => res.json())
+      .then(alert);
+}
+</script>
+</body>
+</html>
