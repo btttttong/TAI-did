@@ -1,3 +1,7 @@
+# For Miscellaneous files to trying out new things
+
+playground/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

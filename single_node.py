@@ -1,6 +1,5 @@
 import asyncio
 import os, tempfile
-from asyncio import run
 from dataclasses import dataclass
 from random import randint, choice
 from time import time
@@ -22,7 +21,7 @@ from ipv8.messaging.serialization import default_serializer
 
 from webapp.web import FlaskWeb
 
-
+from database import CertDBHandler 
 @dataclass
 class Transaction(DataClassPayload[1]):
     sender_mid: bytes
@@ -63,6 +62,7 @@ class BlockchainCommunity(Community, PeerObserver):
         self.transactions = []
         self.web = None
         self.connection_keys = set()
+        self.db = CertDBHandler("certificate_database.db")
 
     def on_peer_added(self, peer: Peer) -> None:
         print(f"[{self.my_peer.mid.hex()}] connected to {peer.mid.hex()}")
@@ -117,6 +117,14 @@ class BlockchainCommunity(Community, PeerObserver):
                 'cert_hash': cert_hash.hex(),
                 'timestamp': timestamp
             })
+
+            self.db.insert_cert(
+                recipient_id=random_certificate["recipient_id"],
+                issuer_id=random_certificate["issuer_id"],
+                cert_hash=cert_hash.hex(),
+                db_id=random_certificate["db_id"],
+                timestamp=timestamp
+            )
 
         self.register_task("send_transaction", send_transaction, interval=5.0, delay=0)
 
@@ -183,7 +191,6 @@ def start_node(developer_mode, web_port=None):
             # Start the web asynchronously so it doesn't block the main event loop
             Thread(target=community.web.start).start()
         
-        await run_forever()
-
-    run(boot())
+    asyncio.get_event_loop().run_until_complete(boot())
+    run_forever()
 
