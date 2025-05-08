@@ -9,7 +9,7 @@ def run_peer(port_offset):
     dev_mode = True
     os.environ["PORT_OFFSET"] = str(port_offset)
     web_port = 8080 + port_offset
-    start_node(dev_mode, web_port=web_port)
+    start_node(node_id=port_offset, developer_mode=dev_mode, web_port=web_port)
 
 if __name__ == "__main__":
     processes = []

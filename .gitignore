@@ -1,3 +1,8 @@
+# db and other files that are not needed in the repository
+
+*.db
+*.pem
+
 # For Miscellaneous files to trying out new things
 
 playground/
