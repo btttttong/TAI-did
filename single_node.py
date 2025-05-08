@@ -19,7 +19,7 @@ from ipv8.keyvault.crypto import default_eccrypto, ECCrypto
 from cryptography.exceptions import InvalidSignature
 from ipv8.messaging.serialization import default_serializer
 
-from webapp.web import FlaskWeb
+from webapp.app import NodeWeb
 
 from database import CertDBHandler 
 @dataclass
@@ -86,7 +86,6 @@ class BlockchainCommunity(Community, PeerObserver):
 
             random_certificate =  choice(certificate_data_list)
 
-            #demo hash
             cert_hash = random_certificate.get("cert_hash")
             cert_hash = cert_hash.encode()
 
@@ -183,14 +182,32 @@ def start_node(developer_mode, web_port=None):
                           default_bootstrap_defs, {}, [('started',)])
 
         ipv8 = IPv8(builder.finalize(), extra_communities={'BlockchainCommunity': BlockchainCommunity})
-        await ipv8.start()
 
-        if web_port is not None:
-            community = ipv8.get_overlay(BlockchainCommunity)
-            community.web = FlaskWeb(community, port=web_port)
-            # Start the web asynchronously so it doesn't block the main event loop
-            Thread(target=community.web.start).start()
-        
-    asyncio.get_event_loop().run_until_complete(boot())
-    run_forever()
+        try:
+            await ipv8.start()
+            
+            if web_port is not None:
+                community = ipv8.get_overlay(BlockchainCommunity)
+                community.web = NodeWeb(community, port=web_port)
+                
+                # Run Flask in a separate thread properly
+                flask_thread = Thread(
+                    target=community.web.start,
+                    daemon=True  # Daemonize so it exits with main thread
+                )
+                flask_thread.start()
+            
+            # Keep the node running
+            while True:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            print("Shutting down node...")
+        finally:
+            await ipv8.stop()
+            try:
+                os.unlink(key_path)
+            except:
+                pass
+                
+    asyncio.run(boot())
 
