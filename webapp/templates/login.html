@@ -9,12 +9,12 @@
         <h2 class="mb-4">Login</h2>
         <form method="POST" action="/login">
             <div class="mb-3">
-                <label for="user_id" class="form-label">User ID</label>
-                <input type="text" class="form-control" id="user_id" name="user_id" required>
+                <label for="public_key" class="form-label">Public Key</label>
+                <input type="text" class="form-control" id="public_key" name="public_key" required>
             </div>
             <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required>
+                <label for="private_key" class="form-label">Private Key</label>
+                <input type="private_key" class="form-control" id="private_key" name="private_key" required>
             </div>
             {% if error %}
                 <div class="alert alert-danger">{{ error }}</div>

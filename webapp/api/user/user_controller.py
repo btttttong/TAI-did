@@ -7,11 +7,11 @@ class UserController:
         self.user_service = UserService()
 
     def login_user(self):
-        user_id = request.form.get("user_id")
-        password = request.form.get("password")
+        public_key = request.form.get("public_key")
+        private_key = request.form.get("private_key")
 
-        if self.user_service.authenticate(user_id, password):
-            session["user_id"] = user_id
+        if self.user_service.authenticate(public_key, private_key):
+            session["public_key"] = public_key
             return redirect("/dashboard")
         else:
             return render_template("login.html", error="Invalid credentials")
@@ -21,13 +21,13 @@ class UserController:
         return redirect("/login")
 
     def dashboard(self):
-        if "user_id" not in session:
+        if "public_key" not in session:
             return redirect("/login")
         
-        user_id = session["user_id"]
-        certs = self.user_service.get_cert(user_id)
-        return render_template("dashboard.html", user_id=user_id, certificates=certs)
+        public_key = session["public_key"]
+        certs = self.user_service.get_cert(public_key)
+        return render_template("dashboard.html", public_key=public_key, certificates=certs)
 
-    def get_public_key(self, user_id):
-        public_key = self.user_service.get_public_key(user_id)
-        return public_key
+    def get_public_key(self, public_key):
+        pubkey = self.user_service.get_public_key(public_key)
+        return pubkey
