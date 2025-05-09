@@ -26,29 +26,29 @@
             const tbody = document.getElementById("transaction-body");
 
             // Loop through each transaction and fetch certificate data for each
-            data.transactions.forEach(ts => {
+            data.transactions.forEach(tx => {
                 // Fetch the certificate data by cert_hash
-                fetch(`/api/certificate/${ts.cert_hash}`)
+                fetch(`/api/certificate/${tx.cert_hash}`)
                     .then(res => res.json())
                     .then(certData => {
                         // Create table row with transaction and certificate data
                         const row = `<tr>
-                            <td>${ts.sender}</td>
-                            <td>${ts.receiver}</td>
-                            <td>${ts.cert_hash}</td>
+                            <td>${tx.sender}</td>
+                            <td>${tx.receiver}</td>
+                            <td>${tx.cert_hash}</td>
                             <td>${certData ? JSON.stringify(certData) : 'No data found'}</td>
-                            <td>${new Date(ts.timestamp * 1000).toLocaleString()}</td>
+                            <td>${new Date(tx.timestamp * 1000).toLocaleString()}</td>
                         </tr>`;
                         tbody.innerHTML += row;
                     })
                     .catch(err => {
                         console.error('Error fetching certificate data:', err);
                         const row = `<tr>
-                            <td>${ts.sender}</td>
-                            <td>${ts.receiver}</td>
-                            <td>${ts.cert_hash}</td>
+                            <td>${tx.sender}</td>
+                            <td>${tx.receiver}</td>
+                            <td>${tx.cert_hash}</td>
                             <td>Failed to fetch certificate</td>
-                            <td>${new Date(ts.timestamp * 1000).toLocaleString()}</td>
+                            <td>${new Date(tx.timestamp * 1000).toLocaleString()}</td>
                         </tr>`;
                         tbody.innerHTML += row;
                     });
