@@ -14,6 +14,7 @@ def run_peer(port_offset):
 
     start_node(dev_mode, web_port=web_port)
 
+
 if __name__ == "__main__":
     processes = []
 

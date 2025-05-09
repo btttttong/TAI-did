@@ -62,7 +62,8 @@ class BlockchainCommunity(Community, PeerObserver):
         self.transactions = []
         self.web = None
         self.connection_keys = set()
-        self.db = CertDBHandler("certificate_database.db")
+        self.node_id = None
+        self.db = None  
 
     def on_peer_added(self, peer: Peer) -> None:
         print(f"[{self.my_peer.mid.hex()}] connected to {peer.mid.hex()}")
@@ -149,21 +150,17 @@ class BlockchainCommunity(Community, PeerObserver):
         })
 
 
-def start_node(developer_mode, web_port=None):
+def start_node(node_id, developer_mode, web_port=None):
     async def boot():
         builder = ConfigBuilder().clear_keys().clear_overlays()
         crypto = ECCrypto()
-        my_key = crypto.generate_key("medium")
-        key_bin = my_key.key_to_bin()
+        key_path = f"key_{node_id}.pem"
+        if not os.path.exists(key_path):
+            key = crypto.generate_key("medium")
+            with open(key_path, "wb") as f:
+                f.write(key.key_to_bin())
         if developer_mode == True:
-            print("-----------------")
-            print("Builder, crypto, key and binary key locked in")
-
-        with tempfile.NamedTemporaryFile(delete=False, mode='wb', suffix='.pem') as f:
-            f.write(key_bin)
-            key_path = f.name
-        if developer_mode == True:
-            print("Temporary file generated")
+            print(f"Key generated/loaded at {key_path}")
 
         port_offset = int(os.environ.get("PORT_OFFSET", "0"))
         port = 8090 + port_offset
@@ -179,7 +176,7 @@ def start_node(developer_mode, web_port=None):
 
         builder.add_overlay("BlockchainCommunity", "my peer",
                           [WalkerDefinition(Strategy.RandomWalk, 10, {'timeout': 3.0})],
-                          default_bootstrap_defs, {}, [('started',)])
+                          default_bootstrap_defs, {}, [('started', )])
 
         ipv8 = IPv8(builder.finalize(), extra_communities={'BlockchainCommunity': BlockchainCommunity})
 

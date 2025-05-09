@@ -1,8 +1,8 @@
 import sqlite3
 
 class CertDBHandler:
-    def __init__(self, db_path="certificate_database.db"):
-        self.db_path = db_path
+    def __init__(self, node_id):
+        self.db_path = f"certificate_database_{node_id}.db"
         self._ensure_table()
 
     def _connect(self):
