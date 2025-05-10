@@ -1,6 +1,5 @@
 import asyncio
 import os, tempfile
-from dataclasses import dataclass
 from random import randint, choice
 from time import time
 from threading import Thread
@@ -20,28 +19,11 @@ from cryptography.exceptions import InvalidSignature
 from ipv8.messaging.serialization import default_serializer
 
 from webapp.app import NodeWeb
-
 from webapp.api.cert.cert_repo import CertDBHandler 
 
-@dataclass
-class Transaction(DataClassPayload[1]):
-    sender_mid: bytes
-    receiver_mid: bytes
-    cert_hash: bytes
-    timestamp: float
-    signature: bytes
-    public_key: bytes
-
-    @classmethod
-    def serializer(cls):
-        return default_serializer(cls,
-            [(bytes, "sender_mid"),
-             (bytes, "receiver_mid"),
-             (bytes, "cert_hash"),
-             (float, "timestamp"),
-             (bytes, "signature"),
-             (bytes, "public_key")]
-        )
+from models.transaction import Transaction
+from models.block import Block
+from models.blockchain import Blockchain
 
 def verify_signature(signature: bytes, public_key: bytes, message: bytes) -> bool:
     try:
@@ -60,6 +42,7 @@ class BlockchainCommunity(Community, PeerObserver):
     def __init__(self, settings: CommunitySettings) -> None:
         super().__init__(settings)
         self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
+        self.blockchain = Blockchain(max_block_size=10 , validators= "")
         self.transactions = []
         self.web = None
         self.connection_keys = set()
@@ -119,6 +102,7 @@ class BlockchainCommunity(Community, PeerObserver):
                 'timestamp': timestamp
             })
 
+            '''
             self.db.insert_cert(
                 recipient_id=random_certificate["recipient_id"],
                 issuer_id=random_certificate["issuer_id"],
@@ -126,6 +110,7 @@ class BlockchainCommunity(Community, PeerObserver):
                 db_id=random_certificate["db_id"],
                 timestamp=timestamp
             )
+            '''
 
         self.register_task("send_transaction", send_transaction, interval=5.0, delay=0)
 
@@ -149,6 +134,8 @@ class BlockchainCommunity(Community, PeerObserver):
             'cert_hash': payload.cert_hash.hex(),
             'timestamp': payload.timestamp
         })
+     
+        self.blockchain.add_pending_transaction(payload)
 
 
 def start_node(node_id, developer_mode, web_port=None):
