@@ -13,6 +13,15 @@ class CertController:
             return jsonify({"error": str(e)}), 400
         except Exception as e:
             return jsonify({"error": "Internal server error"}), 500
+        
+    def get_cert_by_public_key(self, publice_key):
+        try:
+            data = self.service.get_cert_by_public_key(publice_key)
+            return jsonify(data)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": "Internal server error"}), 500
 
     def get_transactions(self):
         transactions = self.service.get_transactions()

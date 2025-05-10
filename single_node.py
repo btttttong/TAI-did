@@ -21,7 +21,8 @@ from ipv8.messaging.serialization import default_serializer
 
 from webapp.app import NodeWeb
 
-from database import CertDBHandler 
+from webapp.api.cert.cert_repo import CertDBHandler 
+
 @dataclass
 class Transaction(DataClassPayload[1]):
     sender_mid: bytes
