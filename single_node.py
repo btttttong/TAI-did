@@ -38,6 +38,8 @@ class BlockchainCommunity(Community, PeerObserver):
 
     def __init__(self, settings: CommunitySettings) -> None:
         super().__init__(settings)
+        self.known_peers = set()
+        self.seen_message_hashes = set()
         self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
         self.blockchain = Blockchain(max_block_size=10 , validators= "")
         self.transactions = []
@@ -45,8 +47,16 @@ class BlockchainCommunity(Community, PeerObserver):
         self.connection_keys = set()
         self.node_id = None
         self.db = None  
+    
+    def broadcast(self, payload, exclude_peer=None):
+        print(f"[{self.node_id}] Broadcasting payload to {len(self.get_peers())} peers")
+        for peer in self.get_peers():
+            if peer != exclude_peer:
+                self.ez_send(peer, payload)
+
 
     def on_peer_added(self, peer: Peer) -> None:
+        self.known_peers.add(peer.mid)
         print(f"[{self.my_peer.mid.hex()}] connected to {peer.mid.hex()}")
 
     def on_peer_removed(self, peer: Peer) -> None:
@@ -113,6 +123,14 @@ class BlockchainCommunity(Community, PeerObserver):
 
     @lazy_wrapper(Transaction)
     def on_message(self, peer: Peer, payload: Transaction) -> None:
+        message_id = hashlib.sha256(payload.cert_hash + str(payload.timestamp).encode()).hexdigest()
+
+        if message_id in self.seen_message_hashes:
+            print(f"[{self.node_id}] ❌ Duplicate TX ignored.")
+            return
+
+        self.seen_message_hashes.add(message_id)
+
         message = (
             payload.sender_mid +
             payload.receiver_mid +
@@ -133,6 +151,8 @@ class BlockchainCommunity(Community, PeerObserver):
         })
      
         self.blockchain.add_pending_transaction(payload)
+
+        self.broadcast(payload)
 
 
 def start_node(node_id, developer_mode, web_port=None):
@@ -170,6 +190,8 @@ def start_node(node_id, developer_mode, web_port=None):
             
             if web_port is not None:
                 community = ipv8.get_overlay(BlockchainCommunity)
+                community.node_id = node_id
+                community.db = CertDBHandler(node_id)
                 community.web = NodeWeb(community, port=web_port)
                 
                 # Run Flask in a separate thread properly
