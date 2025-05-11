@@ -5,19 +5,23 @@ from binascii import unhexlify
 from .api.cert.cert_controller import CertController
 from .page_controller import PageController
 from .api.user.user_controller import UserController
+from .api.block.block_controller import BlockController
 
 def node_routes(app, community):
     
     # Initialize controllers
     page_controller = PageController()
     cert_controller = CertController(community)
+    block_controller = BlockController(community)
     
     # Static page routes
     app.add_url_rule('/', 'index', page_controller.get_index)
 
     # API routes
     app.add_url_rule('/api/transactions', 'transactions', cert_controller.get_transactions)
-    app.add_url_rule('/api/certificate/<cert_hash>', 'certificate_data', cert_controller.get_cert)
+    app.add_url_rule('/api/pending_transactions', 'get_pending_transactions', block_controller.get_pending_transactions, methods=['GET'])
+    app.add_url_rule('/api/blocks', 'get_all_blocks', block_controller.get_all_block, methods=['GET'])
+
 
 def user_routes(app):
     # Initialize controllers
@@ -32,3 +36,5 @@ def user_routes(app):
 
     # API routes
     app.add_url_rule('/api/public_key/<user_id>', 'public_key', user_controller.get_public_key)
+
+    #app.add_url_rule('/api/approve_block', 'approve_block', user_controller.approve_block, methods=['POST']) 

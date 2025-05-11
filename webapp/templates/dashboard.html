@@ -2,22 +2,39 @@
 <html>
 <head>
     <title>Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+        async function loadDashboard() {
+            const txRes = await fetch('/api/transactions');
+            const txs = await txRes.json();
+
+            const blockRes = await fetch('/api/blocks');
+            const blocks = await blockRes.json();
+
+            document.getElementById('transactions').innerHTML =
+                txs.map(tx => `<li>${tx.sender} → ${tx.receiver} | cert: ${tx.cert_hash}</li>`).join("");
+
+            document.getElementById('blocks').innerHTML =
+                blocks.map((block, idx) => `
+                    <li>
+                        Block #${block.index} | Hash: ${block.hash}<br/>
+                        TX count: ${block.transactions.length}
+                    </li>
+                `).join("");
+        }
+
+        
+        window.onload = loadDashboard;
+    </script>
 </head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <h2>Welcome, {{ user_id }}</h2>
-        <p>Your certificates:</p>
-        {% if certificates %}
-            <ul class="list-group">
-                {% for cert in certificates %}
-                    <li class="list-group-item">{{ cert }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>No certificates found.</p>
-        {% endif %}
-        <a href="/logout" class="btn btn-danger mt-3">Logout</a>
-    </div>
+<body>
+    <h1>Dashboard</h1>
+
+    <h2>Pending Transactions</h2>
+    <ul id="transactions"></ul>
+
+    <h2>Blocks</h2>
+    <ul id="blocks"></ul>
+
+    <button onclick="approveBlock()">Approve Block</button>
 </body>
 </html>
