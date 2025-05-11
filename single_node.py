@@ -1,11 +1,8 @@
-import asyncio
-import os, tempfile
+import os, tempfile, json, asyncio, hashlib
 from dataclasses import dataclass
 from random import randint, choice
 from time import time
 from threading import Thread
-import json
-import hashlib
 
 from ipv8.community import Community, CommunitySettings
 from ipv8.configuration import ConfigBuilder, Strategy, WalkerDefinition, default_bootstrap_defs
