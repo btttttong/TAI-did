@@ -20,7 +20,7 @@ def node_routes(app, community):
     # API routes
     app.add_url_rule('/api/transactions', 'transactions', cert_controller.get_transactions)
     app.add_url_rule('/api/pending_transactions', 'get_pending_transactions', block_controller.get_pending_transactions, methods=['GET'])
-    app.add_url_rule('/api/blocks', 'get_all_blocks', block_controller.get_all_block, methods=['GET'])
+    app.add_url_rule('/api/blocks', 'get_all_blocks', block_controller.get_all_blocks, methods=['GET'])
 
 
 def user_routes(app):
@@ -38,3 +38,5 @@ def user_routes(app):
     app.add_url_rule('/api/public_key/<user_id>', 'public_key', user_controller.get_public_key)
 
     #app.add_url_rule('/api/approve_block', 'approve_block', user_controller.approve_block, methods=['POST']) 
+
+    

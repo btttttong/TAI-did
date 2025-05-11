@@ -6,20 +6,32 @@ class BlockService:
         self.community = community
     
     def get_all_blocks(self):
-        blocks = self.community.blockchain.blocks
-        return jsonify([block.__dict__ for block in blocks])
+        blocks = self.community.blockchain.chain
+        print(blocks)
+        return [block.__dict__ for block in blocks]
 
     def get_block_by_index(self, index):
         try:
             block = self.community.blockchain.blocks[int(index)]
-            return jsonify(block.__dict__)
+            return block.__dict__
         except IndexError:
-            return jsonify({"error": "Block not found"}), 404
+            return {"error": "Block not found"}
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return {"error": str(e)}
 
     def get_pending_transactions(self):
-        return [tx.__dict__ for tx in self.community.blockchain.pending_transactions]
+        result = []
+        for tx in self.community.blockchain.pending_transactions:
+            try:
+                result.append({
+                    'sender': tx.sender_mid.hex(),
+                    'receiver': tx.receiver_mid.hex(),
+                    'cert_hash': tx.cert_hash.hex(),
+                    'timestamp': tx.timestamp 
+                })
+            except Exception as e:
+                print("Error processing transaction:", e)
+        return result
     
     def approve_block(self):
         self.community.blockchain.approve_block()

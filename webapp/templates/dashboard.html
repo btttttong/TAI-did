@@ -4,26 +4,51 @@
     <title>Dashboard</title>
     <script>
         async function loadDashboard() {
-            const txRes = await fetch('/api/transactions');
-            const txs = await txRes.json();
-
-            const blockRes = await fetch('/api/blocks');
-            const blocks = await blockRes.json();
-
-            document.getElementById('transactions').innerHTML =
-                txs.map(tx => `<li>${tx.sender} → ${tx.receiver} | cert: ${tx.cert_hash}</li>`).join("");
-
-            document.getElementById('blocks').innerHTML =
-                blocks.map((block, idx) => `
-                    <li>
-                        Block #${block.index} | Hash: ${block.hash}<br/>
-                        TX count: ${block.transactions.length}
-                    </li>
-                `).join("");
+            try {
+                // Load transactions
+                const txRes = await fetch('http://localhost:8080/api/pending_transactions');
+                if (!txRes.ok) {
+                    throw new Error('Failed to fetch transactions');
+                }
+                const txs = await txRes.json();
+                console.log('Transactions:', txs); // Debug log
+                
+                const transactionsList = document.getElementById('transactions');
+                if (txs && txs.length > 0) {
+                    transactionsList.innerHTML = txs.map(tx => 
+                        `<li>${tx.sender} → ${tx.receiver} | cert: ${tx.cert_hash} | time: ${new Date(tx.timestamp * 1000).toISOString()}</li>`
+                    ).join("");
+                } else {
+                    transactionsList.innerHTML = "<li>No pending transactions</li>";
+                }
+    
+                // Load blocks
+                const blockRes = await fetch('http://localhost:8080/api/blocks');
+                if (!blockRes.ok) {
+                    throw new Error('Failed to fetch blocks');
+                }
+                const blocks = await blockRes.json();
+                console.log('Blocks:', blocks); // Debug log
+                
+                const blocksList = document.getElementById('blocks');
+                if (blocks && blocks.length > 0) {
+                    blocksList.innerHTML = blocks.map((block, idx) => `
+                        <li>
+                            Block #${block.index} | Hash: ${block.hash}<br/>
+                            TX count: ${block.transactions.length}
+                        </li>
+                    `).join("");
+                } else {
+                    blocksList.innerHTML = "<li>No blocks mined yet</li>";
+                }
+            } catch (error) {
+                console.error('Dashboard loading error:', error);
+                document.getElementById('transactions').innerHTML = 
+                    `<li style="color: red">Error loading transactions: ${error.message}</li>`;
+            }
         }
-
-        
-        window.onload = loadDashboard;
+    
+        window.addEventListener('DOMContentLoaded', loadDashboard);
     </script>
 </head>
 <body>

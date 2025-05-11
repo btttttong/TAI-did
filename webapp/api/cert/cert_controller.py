@@ -24,5 +24,8 @@ class CertController:
             return jsonify({"error": "Internal server error"}), 500
 
     def get_transactions(self):
-        transactions = self.service.get_transactions()
-        return jsonify({"transactions": transactions})
+        try:
+            transactions = self.service.get_transactions()
+            return jsonify(transactions)
+        except Exception as e:
+            return jsonify({"error": "Internal server error"}), 500

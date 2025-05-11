@@ -5,9 +5,9 @@ class BlockController:
     def __init__(self, community):
         self.service = BlockService(community)
 
-    def get_all_block(self):
+    def get_all_blocks(self):
         try:
-            data = self.service.get_all_block()
+            data = self.service.get_all_blocks()
             return jsonify(data)
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
