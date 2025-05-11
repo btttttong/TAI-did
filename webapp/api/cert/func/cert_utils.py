@@ -1,18 +1,35 @@
 import json
+from ..cert_repo import CertDBHandler
 
 def get_certificate_by_hash(cert_hash: str):
-    cert_file = "ex_certificate_data.json" 
-
     try:
-        with open(cert_file, "r") as f:
-            certs = json.load(f)
-            for cert in certs:
-                if cert.get("cert_hash") == cert_hash:
-                   
-                    return cert
+        db = CertDBHandler(node_id="your_node_id")
+        cert = db.fetch_cert_by_hash(cert_hash)
+        if cert:
+            return {
+                "recipient_id": cert[1],
+                "issuer_id": cert[2],
+                "cert_hash": cert[3],
+                "db_id": cert[4],
+                "timestamp": cert[5]
+            }
+        return {"error": "Certificate not found."}
     except Exception as e:
-        return {"error": f"Error reading certificate file: {str(e)}"}
-
-    return {"error": "Certificate not found"}
-
+        return {"error": f"Failed to retrieve certificate: {str(e)}"}
+    
+def get_certificate_by_public_key(public_key: str):
+    try:
+        db = CertDBHandler(node_id="your_node_id")
+        cert = db.fetch_cert_by_public_key(public_key)
+        if cert:
+            return {
+                "recipient_id": cert[1],
+                "issuer_id": cert[2],
+                "cert_hash": cert[3],
+                "db_id": cert[4],
+                "timestamp": cert[5]
+            }
+        return {"error": "Certificate not found."}
+    except Exception as e:
+        return {"error": f"Failed to retrieve certificate: {str(e)}"}
 

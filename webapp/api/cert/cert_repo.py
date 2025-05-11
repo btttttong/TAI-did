@@ -41,3 +41,20 @@ class CertDBHandler:
         rows = cursor.fetchall()
         conn.close()
         return rows
+    
+    def fetch_cert_by_hash(self, cert_hash):
+        conn = self._connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM cert WHERE cert_hash = ?", (cert_hash,))
+        row = cursor.fetchone()
+        conn.close()
+        return row
+    
+    def fetch_cert_by_public_key(self, public_key):
+        conn = self._connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM cert WHERE recipient_id = ?", (public_key,))
+        row = cursor.fetchone()
+        conn.close()
+        return row
+
