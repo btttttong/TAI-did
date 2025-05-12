@@ -41,7 +41,7 @@ class BlockchainCommunity(Community, PeerObserver):
         self.known_peers = set()
         self.seen_message_hashes = set()
         self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
-        self.blockchain = Blockchain(max_block_size=10 , validators= "")
+        self.blockchain = Blockchain(max_block_size=10 , validators= ['Validator1'])
         self.transactions = []
         self.web = None
         self.connection_keys = set()

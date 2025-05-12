@@ -24,7 +24,7 @@ class CertService:
     def get_transactions(self):
         transactions = self.community.transactions[-10:]
         for ts in transactions:
-            if isinstance(ts['cert_hash'], bytes):
-                ts['cert_hash'] = ts['cert_hash'].decode('utf-8')
+            ts = ts.to_dict()
+
         return transactions
 

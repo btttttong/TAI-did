@@ -12,5 +12,15 @@ class Block:
         self.hash = self.calculate_hash()
 
     def calculate_hash(self):
-        data = json.dumps(self.transactions, sort_keys=True) + str(self.timestamp) + (self.previous_hash or '')
+        tx_dicts = [tx.to_dict() for tx in self.transactions]
+        data = json.dumps(tx_dicts, sort_keys=True) + str(self.timestamp) + (self.previous_hash or '')
         return hashlib.sha256(data.encode('utf-8')).hexdigest()
+    
+    def to_dict(self):
+        return {
+            'index': self.index,
+            'previous_hash': self.previous_hash,
+            'transactions': [tx.to_dict() for tx in self.transactions],
+            'timestamp': self.timestamp,
+            'hash': self.hash,
+        }

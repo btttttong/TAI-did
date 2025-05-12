@@ -1,65 +1,311 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Dashboard</title>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #166088;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --card-bg: #ffffff;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--secondary);
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: var(--secondary);
+            font-weight: bold;
+        }
+
+        .list-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: var(--light);
+            border-left: 5px solid var(--primary);
+            border-radius: 6px;
+            transition: transform 0.3s ease, background 0.3s;
+        }
+
+        .list-item:hover {
+            transform: translateX(5px);
+            background: var(--secondary);
+            color: white;
+        }
+
+        .approve-btn {
+            padding: 12px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1.1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s ease;
+        }
+
+        .approve-btn:hover {
+            background: #218838;
+        }
+
+        .tx-box {
+            background: var(--light);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            border: 1px solid var(--secondary);
+            width: calc(33% - 15px);
+            min-width: 280px;
+            font-size: 0.9rem;
+            word-wrap: break-word;
+            transition: transform 0.3s ease;
+        }
+
+        .tx-box:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--box-shadow);
+        }
+
+        .blocks .block-item {
+            padding: 15px;
+            background: var(--card-bg);
+            margin-bottom: 15px;
+            border-left: 5px solid var(--success);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: transform 0.3s ease, background 0.3s;
+        }
+
+        .block-item:hover {
+            background: #eef6ff;
+            transform: translateX(5px);
+        }
+
+        .block-transactions {
+            display: none;
+            margin-top: 10px;
+            padding: 15px;
+            background: #eef6ff;
+            border-radius: 6px;
+        }
+
+        .block-item .block-transactions ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .block-item .block-transactions .list-item {
+            margin-bottom: 8px;
+        }
+
+        #latest-tx {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 300px; /* or however tall you want */
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        #latest-tx::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #latest-tx::-webkit-scrollbar-thumb {
+            background-color: #999;
+            border-radius: 4px;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Blockchain Dashboard</h1>
+    <div class="container">
+        <!-- Left Column -->
+        <div class="column">
+            <div class="card pending-transactions">
+                <div class="card-title">Pending Transactions</div>
+                <ul class="list" id="pending-list">
+                    <!-- JS will populate -->
+                </ul>
+                <button class="approve-btn" onclick="approveBlock()">Approve Block</button>
+            </div>
+
+            <div class="card blocks">
+                <div class="card-title">Blocks</div>
+                <div id="blocks-container">
+                    <!-- JS will populate -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="column">
+            <div class="card">
+                <div class="card-title">Latest Transactions</div>
+                <div class="latest-transactions" id="latest-tx">
+                    <!-- JS will populate -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         async function loadDashboard() {
             try {
-                // Load transactions
-                const txRes = await fetch('http://localhost:8080/api/pending_transactions');
-                if (!txRes.ok) {
-                    throw new Error('Failed to fetch transactions');
+                const [blocksRes, pendingRes] = await Promise.all([
+                    fetch('http://localhost:8080/api/blocks'),
+                    fetch('http://localhost:8080/api/pending_transactions')
+                ]);
+        
+                if (!blocksRes.ok || !pendingRes.ok) {
+                    throw new Error('Failed to fetch from the backend');
                 }
-                const txs = await txRes.json();
-                console.log('Transactions:', txs); // Debug log
+        
+                const blocksData = await blocksRes.json();
+                const pendingTransactions = await pendingRes.json();
+        
+                const blocks = Array.isArray(blocksData) ? blocksData : (blocksData.blocks || []);
+                const pendingTx = Array.isArray(pendingTransactions) ? pendingTransactions : (pendingTransactions.transactions || []);
+        
+                renderPendingTransactions(pendingTx);
+                renderBlocks(blocks);
+                renderLatestTransactions(pendingTx);
+            } catch (err) {
+                console.error('Error loading dashboard:', err);
+            }
+        }
+        
+        function renderPendingTransactions(transactions) {
+            const container = document.getElementById('pending-list');
+            container.innerHTML = '';
+            const sorted = [...transactions].sort((a, b) => a.timestamp - b.timestamp).slice(0, 9);
+            sorted.forEach(tx => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.innerHTML = `
+                    <strong>From:</strong> ${tx.sender_mid.slice(0, 8)}<br>
+                    <strong>To:</strong> ${tx.receiver_mid.slice(0, 8)}<br>
+                    <strong>Cert Hash:</strong> ${tx.cert_hash}<br>
+                    <strong>Time:</strong> ${new Date(tx.timestamp * 1000).toLocaleString()}
+                `;
+                container.appendChild(li);
+            });
+        }
+
+        function renderBlocks(blocks) {
+            const container = document.getElementById('blocks-container');
+            container.innerHTML = '';
+            blocks.forEach((block, index) => {
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'block-item';
+                blockDiv.innerHTML = `
+                    <strong>Block #${index}</strong> — ${block.transactions?.length || 0} transaction(s)
+                    <div class="block-transactions">
+                        <ul>
+                            ${(block.transactions || []).map(tx => `
+                                <li class="list-item">
+                                    From: ${tx.sender_mid.slice(0, 8)} → To: ${tx.receiver_mid.slice(0, 8)}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+        
+                blockDiv.addEventListener('click', () => {
+                    const txDiv = blockDiv.querySelector('.block-transactions');
+                    txDiv.style.display = txDiv.style.display === 'block' ? 'none' : 'block';
+                });
+        
+                container.appendChild(blockDiv);
+            });
+        }
+        
+        function renderLatestTransactions(transactions) {
+            const container = document.getElementById('latest-tx');
+            container.innerHTML = '';
+            const sorted = [...transactions].sort((a, b) => b.timestamp - a.timestamp);
+            sorted.forEach(tx => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.innerHTML = `
+                    <strong>From:</strong> ${tx.sender_mid.slice(0, 8)}<br>
+                    <strong>To:</strong> ${tx.receiver_mid.slice(0, 8)}<br>
+                    <strong>Cert Hash:</strong> ${tx.cert_hash}<br>
+                    <strong>Time:</strong> ${new Date(tx.timestamp * 1000).toLocaleString()}
+                `;
+                container.appendChild(li);
+            });
+        }
+        
+        async function approveBlock() {
+            try {
+                const res = await fetch('http://localhost:8080/api/approve_block', {
+                    method: 'POST'
+                });
                 
-                const transactionsList = document.getElementById('transactions');
-                if (txs && txs.length > 0) {
-                    transactionsList.innerHTML = txs.map(tx => 
-                        `<li>${tx.sender} → ${tx.receiver} | cert: ${tx.cert_hash} | time: ${new Date(tx.timestamp * 1000).toISOString()}</li>`
-                    ).join("");
-                } else {
-                    transactionsList.innerHTML = "<li>No pending transactions</li>";
-                }
-    
-                // Load blocks
-                const blockRes = await fetch('http://localhost:8080/api/blocks');
-                if (!blockRes.ok) {
-                    throw new Error('Failed to fetch blocks');
-                }
-                const blocks = await blockRes.json();
-                console.log('Blocks:', blocks); // Debug log
+                // Handle response that might already be JSON or needs parsing
+                const result = typeof res === 'string' ? JSON.parse(res) : (await res.json());
                 
-                const blocksList = document.getElementById('blocks');
-                if (blocks && blocks.length > 0) {
-                    blocksList.innerHTML = blocks.map((block, idx) => `
-                        <li>
-                            Block #${block.index} | Hash: ${block.hash}<br/>
-                            TX count: ${block.transactions.length}
-                        </li>
-                    `).join("");
-                } else {
-                    blocksList.innerHTML = "<li>No blocks mined yet</li>";
-                }
-            } catch (error) {
-                console.error('Dashboard loading error:', error);
-                document.getElementById('transactions').innerHTML = 
-                    `<li style="color: red">Error loading transactions: ${error.message}</li>`;
+                alert("Block approved!");
+                loadDashboard(); // Refresh after approving
+            } catch (err) {
+                console.error("Approval failed:", err);
+                alert("Failed to approve block.");
             }
         }
     
-        window.addEventListener('DOMContentLoaded', loadDashboard);
-    </script>
-</head>
-<body>
-    <h1>Dashboard</h1>
-
-    <h2>Pending Transactions</h2>
-    <ul id="transactions"></ul>
-
-    <h2>Blocks</h2>
-    <ul id="blocks"></ul>
-
-    <button onclick="approveBlock()">Approve Block</button>
+        
+        window.onload = loadDashboard;
+        </script>
+        
 </body>
 </html>

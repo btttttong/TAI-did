@@ -21,3 +21,13 @@ class Transaction(DataClassPayload[1]):
             (bytes, "signature"),
             (bytes, "public_key"),
         ])
+    
+    def to_dict(self):
+        return {
+            'sender_mid': self.sender_mid.hex(),  #convert bytes to hex string
+            'receiver_mid': self.receiver_mid.hex(),
+            'cert_hash': self.cert_hash.hex(),
+            'timestamp': self.timestamp,
+            'signature': self.signature.hex(),
+            'public_key': self.public_key.hex(),
+        }

@@ -7,8 +7,7 @@ class BlockService:
     
     def get_all_blocks(self):
         blocks = self.community.blockchain.chain
-        print(blocks)
-        return [block.__dict__ for block in blocks]
+        return [block.to_dict() for block in blocks]
 
     def get_block_by_index(self, index):
         try:
@@ -23,15 +22,22 @@ class BlockService:
         result = []
         for tx in self.community.blockchain.pending_transactions:
             try:
-                result.append({
-                    'sender': tx.sender_mid.hex(),
-                    'receiver': tx.receiver_mid.hex(),
-                    'cert_hash': tx.cert_hash.hex(),
-                    'timestamp': tx.timestamp 
-                })
+                result.append(tx.to_dict())
             except Exception as e:
                 print("Error processing transaction:", e)
         return result
     
     def approve_block(self):
-        self.community.blockchain.approve_block()
+        try:
+            new_block = self.community.blockchain.approve_block()
+            return {
+                "message": "Block approved" if new_block else "No transactions to approve",
+                "block": new_block if new_block else None,
+            }
+        except Exception as e:
+            return {
+                "message": f"Error approving block: {str(e)}",
+                "block": None,
+                "status": "error",
+                "error": str(e)
+            }
