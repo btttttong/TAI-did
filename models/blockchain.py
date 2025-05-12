@@ -25,7 +25,7 @@ class Blockchain:
             print(f"Validator {validator} is not authorized to add blocks.")
 
     def is_valid_block(self, block: Block) -> bool:
-        if block.previous_block_hash != self.chain[-1].hash:
+        if block.previous_hash != self.chain[-1].hash:
             print("Invalid previous block hash.")
             return False
         return True
@@ -34,13 +34,20 @@ class Blockchain:
         self.pending_transactions.append(transaction)
 
     def approve_block(self):
-
-        if not self.pending_transactions:
-            print("No transactions to approve.")
-            return
+        if len(self.pending_transactions) < self.max_block_size:
+            msg = f"Not enough transactions to approve (need {self.max_block_size}, have {len(self.pending_transactions)})"
+            return msg
         
         transactions_to_add = self.pending_transactions[:self.max_block_size]
-
-        block = Block(self.chain[-1].index + 1 ,self.chain[-1].hash, transactions_to_add, time())
+        
+        block = Block(
+            index=self.chain[-1].index + 1,
+            previous_hash=self.chain[-1].hash,
+            transactions=transactions_to_add,
+            timestamp=time()
+        )
+        
         self.add_block(block, validator="Validator1")
         self.pending_transactions = self.pending_transactions[self.max_block_size:]
+        
+        return block.to_dict()
