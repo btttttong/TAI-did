@@ -21,6 +21,7 @@ from webapp.api.cert.cert_repo import CertDBHandler
 
 from models.transaction import Transaction
 from models.blockchain import Blockchain
+from models.vote import Vote
 
 def verify_signature(signature: bytes, public_key: bytes, message: bytes) -> bool:
     try:
@@ -42,6 +43,8 @@ class BlockchainCommunity(Community, PeerObserver):
         self.seen_message_hashes = set()
         self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
         self.blockchain = Blockchain(max_block_size=10 , validators= ['Validator1'])
+        self.pending_transactions = []
+        self.vote_collections = {}
         self.transactions = []
         self.web = None
         self.connection_keys = set()
@@ -154,6 +157,94 @@ class BlockchainCommunity(Community, PeerObserver):
 
         self.broadcast(payload)
 
+
+
+    # voting part
+
+
+    def init_block_voting(self):
+        self.add_message_handler(Vote, self.on_vote_received)
+        self.add_message_handler(bytes, self.on_block_proposal_message)
+        self.register_task("auto_propose_block", self.auto_propose_block, interval=10.0, delay=5.0)
+
+    def auto_propose_block(self):
+        if self.pending_transactions:
+            self.propose_block()
+
+    def propose_block(self):
+        block = {
+            "block_number": 1,
+            "transactions": [tx.__dict__ for tx in self.pending_transactions],
+            "proposer": self.my_peer.mid.hex(),
+            "timestamp": time()
+        }
+        block_json = json.dumps(block, sort_keys=True).encode()
+        block_signature = default_eccrypto.create_signature(self.my_key, block_json)
+
+        block_message = {
+            "block": block,
+            "signature": block_signature.hex()
+        }
+
+        print(f"[{self.node_id}] Proposing Block")
+        self.broadcast(json.dumps(block_message).encode())
+
+    @lazy_wrapper(Vote)
+    def on_vote_received(self, peer: Peer, vote: Vote):
+        message_to_verify = vote.block_hash + vote.voter_mid + vote.vote_decision + str(vote.timestamp).encode()
+        if not verify_signature(vote.signature, vote.public_key, message_to_verify):
+            print(f"[{self.node_id}] Invalid Vote Signature from {peer.mid.hex()}")
+            return
+
+        block_hash_str = vote.block_hash.hex()
+        if block_hash_str not in self.vote_collections:
+            self.vote_collections[block_hash_str] = []
+
+        voter_mids = [v.voter_mid for v in self.vote_collections[block_hash_str]]
+        if vote.voter_mid not in voter_mids:
+            self.vote_collections[block_hash_str].append(vote)
+
+        print(f"[{self.node_id}] Received Vote {vote.vote_decision.decode()} from {vote.voter_mid.hex()[:6]} on Block {block_hash_str[:6]}")
+
+        if len(self.vote_collections[block_hash_str]) >= 3:
+            self.finalize_block(vote.block_hash)
+    
+    def on_block_proposal_message(self, peer: Peer, message_bytes: bytes):
+        try:
+            block_message = json.loads(message_bytes.decode())
+            self.handle_block_proposal(peer, block_message)
+        except Exception as e:
+            print(f"[{self.node_id}] ❌ Failed to parse block proposal: {e}")
+
+
+    def handle_block_proposal(self, peer: Peer, block_message):
+        block = block_message["block"]
+        block_json = json.dumps(block, sort_keys=True).encode()
+        block_hash_bytes = hashlib.sha256(block_json).digest()
+        self.create_and_broadcast_vote(block_hash_bytes, "accept")
+
+
+    def create_and_broadcast_vote(self, block_hash, decision):
+        vote_decision_bytes = decision.encode()
+        timestamp = time()
+        message_to_sign = block_hash + self.my_peer.mid + vote_decision_bytes + str(timestamp).encode()
+        signature = default_eccrypto.create_signature(self.my_key, message_to_sign)
+
+        vote = Vote(
+            block_hash=block_hash,
+            voter_mid=self.my_peer.mid,
+            vote_decision=vote_decision_bytes,
+            timestamp=timestamp,
+            signature=signature,
+            public_key=default_eccrypto.key_to_bin(self.my_key.pub())
+        )
+
+        print(f"[{self.node_id}] 🗳️ Voting {decision} on Block {block_hash.hex()[:6]}")
+        self.broadcast(vote)
+
+    def finalize_block(self, block_hash):
+        print(f"[{self.node_id}] Block {block_hash[:6]} Finalized with 3+ votes!")
+        # Implement block storage or further processing here
 
 def start_node(node_id, developer_mode, web_port=None):
     async def boot():
