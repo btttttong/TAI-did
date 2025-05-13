@@ -38,10 +38,10 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1500px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 20px;
         }
 
@@ -150,7 +150,7 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            max-height: 300px; /* or however tall you want */
+            max-height: 600px; /* or however tall you want */
             overflow-y: auto;
             padding-right: 10px;
         }
@@ -169,7 +169,17 @@
 <body>
     <h1>Blockchain Dashboard</h1>
     <div class="container">
-        <!-- Left Column -->
+        <!-- Left Column: Blocks -->
+        <div class="column">
+            <div class="card blocks">
+                <div class="card-title">Blocks</div>
+                <div id="blocks-container">
+                    <!-- JS will populate -->
+                </div>
+            </div>
+        </div>
+    
+        <!-- Middle Column: Pending Transactions -->
         <div class="column">
             <div class="card pending-transactions">
                 <div class="card-title">Pending Transactions</div>
@@ -178,16 +188,9 @@
                 </ul>
                 <button class="approve-btn" onclick="approveBlock()">Approve Block</button>
             </div>
-
-            <div class="card blocks">
-                <div class="card-title">Blocks</div>
-                <div id="blocks-container">
-                    <!-- JS will populate -->
-                </div>
-            </div>
         </div>
-
-        <!-- Right Column -->
+    
+        <!-- Right Column: Latest Transactions -->
         <div class="column">
             <div class="card">
                 <div class="card-title">Latest Transactions</div>
@@ -197,6 +200,7 @@
             </div>
         </div>
     </div>
+    
 
     <script>
         async function loadDashboard() {
@@ -223,67 +227,70 @@
                 console.error('Error loading dashboard:', err);
             }
         }
+        function createTransactionItem(tx) {
+            const li = document.createElement('li');
+            li.className = 'list-item';
+            li.innerHTML = `
+                <strong>From:</strong> ${tx.sender_mid.slice(0, 8)}<br>
+                <strong>To:</strong> ${tx.receiver_mid.slice(0, 8)}<br>
+                <strong>Cert Hash:</strong> ${tx.cert_hash}<br>
+                <strong>Time:</strong> ${new Date(tx.timestamp * 1000).toLocaleString()}
+            `;
+            return li;
+        }
         
         function renderPendingTransactions(transactions) {
             const container = document.getElementById('pending-list');
             container.innerHTML = '';
             const sorted = [...transactions].sort((a, b) => a.timestamp - b.timestamp).slice(0, 9);
-            sorted.forEach(tx => {
-                const li = document.createElement('li');
-                li.className = 'list-item';
-                li.innerHTML = `
-                    <strong>From:</strong> ${tx.sender_mid.slice(0, 8)}<br>
-                    <strong>To:</strong> ${tx.receiver_mid.slice(0, 8)}<br>
-                    <strong>Cert Hash:</strong> ${tx.cert_hash}<br>
-                    <strong>Time:</strong> ${new Date(tx.timestamp * 1000).toLocaleString()}
-                `;
-                container.appendChild(li);
-            });
+            sorted.forEach(tx => container.appendChild(createTransactionItem(tx)));
         }
 
         function renderBlocks(blocks) {
             const container = document.getElementById('blocks-container');
             container.innerHTML = '';
+
             blocks.forEach((block, index) => {
                 const blockDiv = document.createElement('div');
                 blockDiv.className = 'block-item';
-                blockDiv.innerHTML = `
-                    <strong>Block #${index}</strong> — ${block.transactions?.length || 0} transaction(s)
-                    <div class="block-transactions">
-                        <ul>
-                            ${(block.transactions || []).map(tx => `
-                                <li class="list-item">
-                                    From: ${tx.sender_mid.slice(0, 8)} → To: ${tx.receiver_mid.slice(0, 8)}
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                `;
-        
-                blockDiv.addEventListener('click', () => {
-                    const txDiv = blockDiv.querySelector('.block-transactions');
-                    txDiv.style.display = txDiv.style.display === 'block' ? 'none' : 'block';
+
+                // Set basic block content
+                const blockInfo = document.createElement('div');
+                blockInfo.innerHTML = `<strong>Block #${block.index}</strong> — ${block.transactions?.length || 0} transaction(s)`;
+
+                // Create transactions container
+                const txContainer = document.createElement('div');
+                txContainer.className = 'block-transactions';
+                txContainer.style.display = 'none';
+
+                const txList = document.createElement('ul');
+                txList.className = 'list';
+
+                // Sort transactions (optional - e.g., by amount descending)
+                const sorted = (block.transactions || []).sort((a, b) => b.amount - a.amount);
+
+                sorted.forEach(tx => {
+                    txList.appendChild(createTransactionItem(tx));
                 });
-        
+
+                txContainer.appendChild(txList);
+
+                // Toggle visibility
+                blockDiv.addEventListener('click', () => {
+                    txContainer.style.display = txContainer.style.display === 'block' ? 'none' : 'block';
+                });
+
+                // Assemble
+                blockDiv.appendChild(blockInfo);
+                blockDiv.appendChild(txContainer);
                 container.appendChild(blockDiv);
             });
         }
-        
         function renderLatestTransactions(transactions) {
             const container = document.getElementById('latest-tx');
             container.innerHTML = '';
             const sorted = [...transactions].sort((a, b) => b.timestamp - a.timestamp);
-            sorted.forEach(tx => {
-                const li = document.createElement('li');
-                li.className = 'list-item';
-                li.innerHTML = `
-                    <strong>From:</strong> ${tx.sender_mid.slice(0, 8)}<br>
-                    <strong>To:</strong> ${tx.receiver_mid.slice(0, 8)}<br>
-                    <strong>Cert Hash:</strong> ${tx.cert_hash}<br>
-                    <strong>Time:</strong> ${new Date(tx.timestamp * 1000).toLocaleString()}
-                `;
-                container.appendChild(li);
-            });
+            sorted.forEach(tx => container.appendChild(createTransactionItem(tx)));
         }
         
         async function approveBlock() {
