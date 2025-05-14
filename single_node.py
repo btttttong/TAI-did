@@ -42,6 +42,8 @@ class BlockchainCommunity(Community, PeerObserver):
         self.developer_mode = 1
         # (!) Troll master is active if you set it to "ACTIVE" explicitly
         self.troll_master = "ACTIVE"
+        self.TTS_soul_snatcher = False
+
         # - Resistance components -
         # > Sybill switch <
         self.sybill_failsafe = True
@@ -67,6 +69,7 @@ class BlockchainCommunity(Community, PeerObserver):
         self.blockchain = Blockchain(max_block_size=10, validators=['Validator1' if self.sybill_failsafe == False else self.authorized_validator])
         self.sybil_attempts = []
         self.message_replay_violators = []
+        self.hostile_byzantine_validators = []
         # - Cache storage -
         self.pending_transactions = []
         self.vote_collections = {}
@@ -187,6 +190,7 @@ class BlockchainCommunity(Community, PeerObserver):
 
     @lazy_wrapper(Vote)
     def on_vote_received(self, peer: Peer, vote: Vote):
+        existing_votes = [v for v in self.vote_collections[vote.block_hash.hex()] if v.voter_mid == vote.voter_mid]
         vote_ID = hashlib.sha256(vote.block_hash + vote.voter_mid + vote.vote_decision + str(vote.timestamp).encode()).hexdigest()
         message_to_verify = vote.block_hash + vote.voter_mid + vote.vote_decision + str(vote.timestamp).encode()
         if not verify_signature(vote.signature, vote.public_key, message_to_verify):
@@ -209,6 +213,10 @@ class BlockchainCommunity(Community, PeerObserver):
                     if self.troll_master == "ACTIVE":
                         print("You think I didn't consider this? Nah. We take this seriously.")
                         print("Yours truly E3N_7274 has fucked your plan to resend your last vote ;)")
+                        if self.TTS_soul_snatcher == True:
+                            phrases_A = ["You think I didn't consider this? Nah. We take this seriously.",
+                                         "Yours truly E3N_7274 has fucked your plan to resend your last vote"]
+                            # > TTS <
                 return
 
             self.seen_message_hashes.add(vote_ID)
@@ -229,6 +237,29 @@ class BlockchainCommunity(Community, PeerObserver):
                     "Block_Hash": vote.block_hash.hex(),
                     "Time stamp": time()
                     })
+                return
+
+        # > Byzantine contradiction failsafe <
+        if self.byzantine_failsafe == True:
+            if existing_votes and vote.vote_decision != existing_votes[0].vote_decision:
+                print(f"[{self.node_id}] ⚠️ Byzantine behavior detected from {vote.voter_mid.hex()[:6]} on block {vote.block_hash.hex()[:6]}")
+                self.hostile_byzantine_validators.append({
+                    "Node ID": self.node_id,
+                    "Voter mid": vote.block_hash.hex(),
+                    "Block hash": existing_votes[0].vote_decision.decode(),
+                    "Existing vote": vote.vote_decision.decode(),
+                    "Conflicting vote": vote.vote_decision.decode(),
+                    "Timestamp": time()
+                    })
+                if self.developer_mode == 1:
+                    print("Hostile byzantine validator identified and logged.")
+                    if self.troll_master == "ACTIVE":
+                        print("Im sorry you think we didn't plan for you?!?!?!\n🖕")
+                        print("I DECLARE YOU SHALL NOT PASS")
+                        if self.TTS_soul_snatcher == True:
+                            phrases_B = ["I am sorry you think we didn't plan for you",
+                                         "I DECLARE YOU SHALL NOT PASS"]
+                            # > TTS deployment <
                 return
 
         block_hash_str = vote.block_hash.hex()
@@ -254,7 +285,7 @@ class BlockchainCommunity(Community, PeerObserver):
 
                 if self.troll_master == "ACTIVE":
                     print("Is this you trying to double vote? -_-")
-                    print(f"Bad news for you I planned for this kind of nonsense. This shall not pass.\n🖕")
+                    print(f"Bad news for you I planned for this kind of nonsense. This shall not pass.\n🖕\n")
                 return
 
         print(f"[{self.node_id}] Received Vote {vote.vote_decision.decode()} from {vote.voter_mid.hex()[:6]} on Block {block_hash_str[:6]}")
