@@ -1,0 +1,55 @@
+<form id="registerForm" action="/register" method="POST">
+    <label>Username:</label>
+    <input type="text" name="username" required>
+  
+    <label>Role:</label>
+    <input type="text" name="role" required>
+  
+    <button type="button" onclick="generateKeys()">Generate Keys</button>
+  
+    <div id="keyInfo" style="display:none; margin-top:10px;">
+      <p><strong>Public Key (hex):</strong></p>
+      <textarea id="pubKey" rows="3" cols="70" readonly></textarea>
+  
+      <p><strong>Private Key (hex):</strong> (Keep this safe!)</p>
+      <textarea id="privKey" rows="4" cols="70" readonly></textarea>
+    </div>
+  
+    <!-- This will be sent to server -->
+    <input type="hidden" name="public_key_bin" id="publicKeyField" required>
+  
+    <button type="submit" id="submitBtn" disabled>Register</button>
+  </form>
+  
+  <script>
+  let privateKeyRaw = null; // Optional: store for user download
+  
+  async function generateKeys() {
+      const keyPair = await crypto.subtle.generateKey(
+          { name: "ECDSA", namedCurve: "P-256" },
+          true,
+          ["sign", "verify"]
+      );
+  
+      const publicKey = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+      const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+  
+      const pubHex = buf2hex(publicKey);
+      const privHex = buf2hex(privateKey);
+  
+      document.getElementById("pubKey").value = pubHex;
+      document.getElementById("privKey").value = privHex;
+      document.getElementById("publicKeyField").value = pubHex;
+      document.getElementById("keyInfo").style.display = "block";
+      document.getElementById("submitBtn").disabled = false;
+  
+      privateKeyRaw = privHex; // Save for later download if needed
+  }
+  
+  function buf2hex(buffer) {
+      return [...new Uint8Array(buffer)]
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+  }
+  </script>
+  
