@@ -19,11 +19,12 @@ class UserService:
     # Registration Process
     # ----------------------
     def register_user(self, public_key_bin, username, role):
+        pubkey_hex = public_key_bin.hex()
         """Register a new user with their PUBLIC key only"""
-        if public_key_bin in self.users_db:
+        if pubkey_hex in self.users_db:
             raise ValueError("User already exists")
             
-        self.users_db[public_key_bin] = {
+        self.users_db[pubkey_hex] = {
             "role": role,
             "username": username,
             "nonce": None  # Will store active challenges
@@ -42,30 +43,6 @@ class UserService:
         self.users_db[public_key_bin]["nonce"] = nonce
         return nonce
 
-    def verify_login(self, public_key_bin, signature):
-        """Step 2: Verify the signed challenge"""
-        user = self.users_db.get(public_key_bin)
-        if not user or not user["nonce"]:
-            return False
-            
-        try:
-            # 1. Get stored challenge
-            challenge = user["nonce"]
-            
-            # 2. Verify signature against public key
-            pub_key = self.eccrypto.key_from_public_bin(public_key_bin)
-            is_valid = self.eccrypto.verify(pub_key, challenge, signature)
-            
-            # 3. Clear the used challenge
-            user["nonce"] = None
-            
-            return is_valid
-        except:
-            return False
-
-    # ----------------------
-    # User Management
-    # ----------------------
     def get_role(self, public_key_bin):
         user = self.users_db.get(public_key_bin)
         return user["role"] if user else None

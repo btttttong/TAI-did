@@ -1,123 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Key Pair Generation</title>
-    <style>
-        /* ... (keep previous styles) ... */
-        .key-generation {
-            margin: 20px 0;
-            padding: 15px;
-            background: #f0f8ff;
-            border-radius: 4px;
-        }
-        .key-display {
-            word-break: break-all;
-            font-family: monospace;
-            font-size: 12px;
-            margin: 10px 0;
-            padding: 10px;
-            background: white;
-            border: 1px solid #ddd;
-        }
-    </style>
-</head>
-<body>
-    <div class="auth-container">
-        <h1>Register</h1>
-        
-        {% if error %}
-        <div class="error">{{ error }}</div>
-        {% endif %}
-        
-        <form id="registerForm" action="/register" method="POST">
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-
-            <div class="form-group">
-                <label for="role">role:</label>
-                <input type="text" id="role" name="role" required>
-            </div>
-            
-            <div class="key-generation">
-                <h3>Generate Your Secure Keys</h3>
-                <p>Your private key will be stored in your browser only.</p>
-                <button type="button" id="generateKeys">Generate Keys</button>
-                
-                <div id="keyStatus" style="margin-top: 10px;"></div>
-                <div class="key-display" id="publicKeyDisplay" style="display: none;">
-                    <strong>Public Key:</strong> <span id="publicKeyText"></span>
-                </div>
-                
-                <input type="hidden" id="public_key" name="public_key_bin" required>
-            </div>
-            
-            <button type="submit" id="registerBtn" disabled>Register</button>
-        </form>
-        
-        <div class="login-link">
-            Already have an account? <a href="/login">Login</a>
-        </div>
+<form id="registerForm" action="/register" method="POST">
+    <label>Username:</label>
+    <input type="text" name="username" required>
+  
+    <label>Role:</label>
+    <input type="text" name="role" required>
+  
+    <button type="button" onclick="generateKeys()">Generate Keys</button>
+  
+    <div id="keyInfo" style="display:none; margin-top:10px;">
+      <p><strong>Public Key (hex):</strong></p>
+      <textarea id="pubKey" rows="3" cols="70" readonly></textarea>
+  
+      <p><strong>Private Key (hex):</strong> (Keep this safe!)</p>
+      <textarea id="privKey" rows="4" cols="70" readonly></textarea>
     </div>
-
-    <script>
-        document.getElementById('generateKeys').addEventListener('click', async function() {
-            try {
-                const keyPair = await window.crypto.subtle.generateKey(
-                    {
-                        name: "ECDSA",
-                        namedCurve: "P-256",
-                    },
-                    true,
-                    ["sign", "verify"]
-                );
-                
-                // Export public key
-                const exportedPublic = await window.crypto.subtle.exportKey("raw", keyPair.publicKey);
-                const publicKeyHex = arrayBufferToHex(exportedPublic);
-                
-                // Export private key (for local storage)
-                const exportedPrivate = await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-                const privateKeyHex = arrayBufferToHex(exportedPrivate);
-                
-                // Display public key
-                document.getElementById('publicKeyText').textContent = publicKeyHex;
-                document.getElementById('publicKeyDisplay').style.display = 'block';
-                document.getElementById('public_key').value = publicKeyHex;
-                
-                // Store private key securely in IndexedDB
-                await storePrivateKey(publicKeyHex, privateKeyHex);
-                
-                document.getElementById('keyStatus').innerHTML = 
-                    '<span style="color:green">✓ Keys generated and stored securely</span>';
-                document.getElementById('registerBtn').disabled = false;
-                
-            } catch (error) {
-                document.getElementById('keyStatus').innerHTML = 
-                    '<span style="color:red">Error generating keys: ' + error.message + '</span>';
-                console.error("Key generation error:", error);
-            }
-        });
-        
-        function arrayBufferToHex(buffer) {
-            return Array.from(new Uint8Array(buffer))
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
-        }
-        
-        async function storePrivateKey(publicKeyHex, privateKeyHex) {
-            // In a real app, you would:
-            // 1. Use IndexedDB for secure storage
-            // 2. Optionally encrypt with a user passphrase
-            // 3. Implement backup/export functionality
-            
-            // Simple localStorage example (not recommended for production)
-            localStorage.setItem(`keyPair_${publicKeyHex}`, privateKeyHex);
-            console.log("Private key stored for public key:", publicKeyHex);
-        }
-    </script>
-</body>
-</html>
+  
+    <!-- This will be sent to server -->
+    <input type="hidden" name="public_key_bin" id="publicKeyField" required>
+  
+    <button type="submit" id="submitBtn" disabled>Register</button>
+  </form>
+  
+  <script>
+  let privateKeyRaw = null; // Optional: store for user download
+  
+  async function generateKeys() {
+      const keyPair = await crypto.subtle.generateKey(
+          { name: "ECDSA", namedCurve: "P-256" },
+          true,
+          ["sign", "verify"]
+      );
+  
+      const publicKey = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+      const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+  
+      const pubHex = buf2hex(publicKey);
+      const privHex = buf2hex(privateKey);
+  
+      document.getElementById("pubKey").value = pubHex;
+      document.getElementById("privKey").value = privHex;
+      document.getElementById("publicKeyField").value = pubHex;
+      document.getElementById("keyInfo").style.display = "block";
+      document.getElementById("submitBtn").disabled = false;
+  
+      privateKeyRaw = privHex; // Save for later download if needed
+  }
+  
+  function buf2hex(buffer) {
+      return [...new Uint8Array(buffer)]
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+  }
+  </script>
+  
