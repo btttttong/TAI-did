@@ -40,17 +40,11 @@ class BlockchainCommunity(Community, PeerObserver):
         super().__init__(settings)
         # - Behavior switches -
         self.developer_mode = 1
+        # (!) Troll master is active if you set it to "ACTIVE" explicitly
         self.troll_master = "ACTIVE"
-        # - key processing -
-        self.known_peers = set()
-        self.seen_message_hashes = set()
-        self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
-        self.blockchain = Blockchain(max_block_size=10 , validators= ['Validator1'])
-        self.sybil_attempts = []
-        self.authorized_validator = self.my_peer.mid
         # - Resistance components -
         # > Sybill switch <
-        self.sybill_failsafe = False
+        self.sybill_failsafe = True
         if self.sybill_failsafe == True:
             print("Sybil attack failsafe active")
         # > Double voting failsafe <
@@ -65,6 +59,13 @@ class BlockchainCommunity(Community, PeerObserver):
         self.message_replay_failsafe = False
         if self.message_replay_failsafe == True:
             print("Message replay failsafe active")
+        # - key processing -
+        self.known_peers = set()
+        self.seen_message_hashes = set()
+        self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
+        self.authorized_validator = self.my_peer.mid
+        self.blockchain = Blockchain(max_block_size=10, validators=['Validator1' if self.sybill_failsafe == False else self.authorized_validator])
+        self.sybil_attempts = []
         # - Cache storage -
         self.pending_transactions = []
         self.vote_collections = {}
@@ -190,15 +191,34 @@ class BlockchainCommunity(Community, PeerObserver):
             print(f"[{self.node_id}] Invalid Vote Signature from {peer.mid.hex()}")
             return
 
+        if self.sybill_failsafe == True:
+            if vote.voter_mid != self.authorized_validator:
+                ip_address_tracked = getattr(peer, "address", ("unknown",))[0]
+                print(
+                    f"[{self.node_id}] ❌ Unauthorized vote from {vote.voter_mid.hex()[:6]} at IP {ip_address_tracked}")
+                if self.developer_mode == 1 and self.troll_master == "ACTIVE":
+                    # > Call them out right here on sight <
+                    print(f"\nSybil vote attack documented. You are done {self.node_id}\n")
+
+                self.sybil_attempts.append({
+                    "Voter mid": vote.voter_mid.hex(),
+                    "Tracked IP address": ip_address_tracked,
+                    "Block_Hash": vote.block_hash.hex(),
+                    "Time stamp": time()
+                    })
+                return
+
         block_hash_str = vote.block_hash.hex()
         if block_hash_str not in self.vote_collections:
             self.vote_collections[block_hash_str] = []
 
         voter_mids = [v.voter_mid for v in self.vote_collections[block_hash_str]]
         if self.double_voting_failsafe == False:
+            # > Double voting failsafe inactive <
             if vote.voter_mid not in voter_mids:
                 self.vote_collections[block_hash_str].append(vote)
         elif self.double_voting_failsafe == True:
+            # > Double voting failsafe active <
             if vote.voter_mid not in voter_mids:
                 # > Processes vote <
                 self.vote_collections[block_hash_str].append(vote)
