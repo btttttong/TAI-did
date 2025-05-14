@@ -34,6 +34,10 @@ def user_routes(app):
     app.add_url_rule('/login', 'login_page', page_controller.login_page, methods=['GET'])
     app.add_url_rule('/login', 'login_user', user_controller.login_user, methods=['POST'])
     app.add_url_rule('/logout', 'logout', user_controller.logout_user)
+
+    app.add_url_rule('/register', 'register_page', page_controller.register_page, methods=['GET'])
+    app.add_url_rule('/register', 'register_user', user_controller.register_user, methods=['POST'])
+
     app.add_url_rule('/dashboard', 'dashboard', user_controller.dashboard)
 
     # API routes

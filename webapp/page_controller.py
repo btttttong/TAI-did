@@ -10,3 +10,6 @@ class PageController(MethodView):
     
     def login_page(self):
         return render_template("login.html")
+    
+    def register_page(self):
+        return render_template("register.html")
