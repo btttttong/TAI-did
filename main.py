@@ -4,7 +4,7 @@ from single_node import start_node
 from threading import Thread
 from run_main_web import start_main_web
 
-NUM_PEERS = 4
+NUM_PEERS = 2
 
 def run_peer(port_offset):
     dev_mode = True

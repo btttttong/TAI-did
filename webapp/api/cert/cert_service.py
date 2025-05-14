@@ -28,3 +28,8 @@ class CertService:
 
         return transactions
 
+    def send_transaction(self, recipient_id, issuer_id, cert_hash, db_id):
+        result = self.community.create_and_broadcast_transaction(
+            recipient_id, issuer_id, cert_hash, db_id
+        )
+        return {"message": "Transaction sent", "transaction": result}

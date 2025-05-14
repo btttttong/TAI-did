@@ -1,43 +1,49 @@
-from flask import jsonify, render_template
-
+from flask import jsonify, request
 
 class BlockService:
     def __init__(self, community):
         self.community = community
-    
+
     def get_all_blocks(self):
-        blocks = self.community.blockchain.chain
-        return [block.to_dict() for block in blocks]
+        return [block.to_dict() for block in self.community.blockchain.chain]
 
     def get_block_by_index(self, index):
         try:
-            block = self.community.blockchain.blocks[int(index)]
-            return block.__dict__
+            block = self.community.blockchain.chain[int(index)]
+            return block.to_dict()
         except IndexError:
             return {"error": "Block not found"}
         except Exception as e:
             return {"error": str(e)}
+        
+    def get_proposed_block(self):
+        proposed_block = self.community.get_current_proposed_block()
+        if proposed_block:
+            return proposed_block
+        else:
+            return {"message": "No block proposed yet", "block": None}
+
 
     def get_pending_transactions(self):
-        result = []
-        for tx in self.community.blockchain.pending_transactions:
+        return [tx.to_dict() for tx in self.community.blockchain.pending_transactions]
+
+    def vote_block(self, block_hash: str, decision: str):
+        def vote_block(self):
             try:
-                result.append(tx.to_dict())
+                data = request.json
+                print("Incoming vote request:", data)
+                block_hash_hex = data.get("block_hash")
+                decision = data.get("decision")
+                print("Parsed block hash:", block_hash_hex, "Decision:", decision)
+
+                if not block_hash_hex or not decision:
+                    raise ValueError("Missing block_hash or decision")
+
+                block_hash_bytes = bytes.fromhex(block_hash_hex)
+                self.community.create_and_broadcast_vote(block_hash_bytes, decision)
+
+                return jsonify({"message": "Vote submitted successfully"})
             except Exception as e:
-                print("Error processing transaction:", e)
-        return result
-    
-    def approve_block(self):
-        try:
-            new_block = self.community.blockchain.approve_block()
-            return {
-                "message": "Block approved" if new_block else "No transactions to approve",
-                "block": new_block if new_block else None,
-            }
-        except Exception as e:
-            return {
-                "message": f"Error approving block: {str(e)}",
-                "block": None,
-                "status": "error",
-                "error": str(e)
-            }
+                print("Error submitting vote:", str(e))
+                return jsonify({"error": str(e)}), 400
+

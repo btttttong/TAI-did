@@ -19,9 +19,11 @@ def node_routes(app, community):
 
     # API routes
     app.add_url_rule('/api/transactions', 'transactions', cert_controller.get_transactions)
+    app.add_url_rule('/api/send_transaction', 'send_transaction', cert_controller.send_transaction, methods=['POST'])
     app.add_url_rule('/api/pending_transactions', 'get_pending_transactions', block_controller.get_pending_transactions, methods=['GET'])
+    app.add_url_rule('/api/proposed_block', 'get_proposed_block', block_controller.get_proposed_block, methods=['GET'])
     app.add_url_rule('/api/blocks', 'get_all_blocks', block_controller.get_all_blocks, methods=['GET'])
-    app.add_url_rule('/api/approve_block', 'approve_block', block_controller.approve_block, methods=['POST']) 
+    app.add_url_rule('/api/vote_block', 'vote_block', block_controller.vote_block, methods=['POST']) 
 
 def user_routes(app):
     # Initialize controllers

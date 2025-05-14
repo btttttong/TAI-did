@@ -1,24 +1,18 @@
-import os, tempfile, json, asyncio, hashlib
-from dataclasses import dataclass
-from random import randint, choice
+import os, json, asyncio, hashlib
+from random import choice
 from time import time
 from threading import Thread
-
 from ipv8.community import Community, CommunitySettings
 from ipv8.configuration import ConfigBuilder, Strategy, WalkerDefinition, default_bootstrap_defs
 from ipv8.lazy_community import lazy_wrapper
-from ipv8.messaging.payload_dataclass import DataClassPayload
 from ipv8.peerdiscovery.network import PeerObserver
 from ipv8.types import Peer
-from ipv8.util import run_forever
 from ipv8_service import IPv8
 from ipv8.keyvault.crypto import default_eccrypto, ECCrypto
 from cryptography.exceptions import InvalidSignature
-from ipv8.messaging.serialization import default_serializer
 
 from webapp.app import NodeWeb
-from webapp.api.cert.cert_repo import CertDBHandler 
-
+from webapp.api.cert.cert_repo import CertDBHandler
 from models.transaction import Transaction
 from models.blockchain import Blockchain
 from models.vote import Vote
@@ -30,13 +24,10 @@ def verify_signature(signature: bytes, public_key: bytes, message: bytes) -> boo
         return True
     except InvalidSignature:
         return False
-    except Exception as e:
-        print("Verification error:", e)
-        return False
 
 class BlockchainCommunity(Community, PeerObserver):
     community_id = b"myblockchain-test-01"
-    def __init__(self, settings: CommunitySettings) -> None:
+    def __init__(self, settings: CommunitySettings):
         super().__init__(settings)
         # - Behavior switches -
         self.developer_mode = 1
@@ -62,6 +53,8 @@ class BlockchainCommunity(Community, PeerObserver):
         if self.message_replay_failsafe == True:
             print("Message replay failsafe active")
         # - key processing -
+        self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
+        self.blockchain = Blockchain(max_block_size=5, validators=['Validator1'])
         self.known_peers = set()
         self.seen_message_hashes = set()
         self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
@@ -74,119 +67,98 @@ class BlockchainCommunity(Community, PeerObserver):
         self.pending_transactions = []
         self.vote_collections = {}
         self.transactions = []
-        self.web = None
-        self.connection_keys = set()
         self.node_id = None
-        self.db = None  
-    
+        self.db = None
+        self.current_proposed_block = None
+
     def broadcast(self, payload, exclude_peer=None):
-        print(f"[{self.node_id}] Broadcasting payload to {len(self.get_peers())} peers")
         for peer in self.get_peers():
-            if peer != exclude_peer:
+            if peer != exclude_peer and peer != self.my_peer:
                 self.ez_send(peer, payload)
 
     def on_peer_added(self, peer: Peer) -> None:
         self.known_peers.add(peer.mid)
         print(f"[{self.my_peer.mid.hex()}] connected to {peer.mid.hex()}")
 
-    def on_peer_removed(self, peer: Peer) -> None:
-        pass
+    def on_peer_removed(self, peer: Peer):
+        print(f"[{self.node_id}] Peer {peer.mid.hex()} removed.")
 
-    def started(self) -> None:
+
+    def started(self):
         self.network.add_peer_observer(self)
-        self.add_message_handler(Transaction, self.on_message)
-
-        async def send_transaction():
-            peers = self.get_peers()
-            if not peers:
-                return
-
-            receiver = choice(peers)
-
-            with open('ex_certificate_data.json', 'r') as file:
-                certificate_data_list = json.load(file)
-
-            random_certificate =  choice(certificate_data_list)
-
-            cert_hash = random_certificate.get("cert_hash")
-            cert_hash = cert_hash.encode()
-
-            timestamp = time()
-
-            message = (
-                self.my_peer.mid +
-                receiver.mid +
-                cert_hash  +
-                str(timestamp).encode()
-            )
-
-            signature = default_eccrypto.create_signature(self.my_key, message)
-
-            transaction = Transaction(
-                sender_mid=self.my_peer.mid,
-                receiver_mid=receiver.mid,
-                cert_hash=cert_hash,
-                timestamp=timestamp,
-                signature=signature,
-                public_key=default_eccrypto.key_to_bin(self.my_key.pub())
-            )
-
-            self.ez_send(receiver, transaction)
-            self.transactions.append({
-                'sender': self.my_peer.mid.hex()[:6],
-                'receiver': receiver.mid.hex()[:6],
-                'cert_hash': cert_hash.hex(),
-                'timestamp': timestamp
-            })
-
-            '''
-            self.db.insert_cert(
-                recipient_id=random_certificate["recipient_id"],
-                issuer_id=random_certificate["issuer_id"],
-                cert_hash=cert_hash.hex(),
-                db_id=random_certificate["db_id"],
-                timestamp=timestamp
-            )
-            '''
-
-        self.register_task("send_transaction", send_transaction, interval=5.0, delay=0)
+        self.add_message_handler(Transaction, self.on_transaction_received)
+        self.add_message_handler(Vote, self.on_vote_received)
 
     @lazy_wrapper(Transaction)
-    def on_message(self, peer: Peer, payload: Transaction) -> None:
-        message_id = hashlib.sha256(payload.cert_hash + str(payload.timestamp).encode()).hexdigest()
-
+    def on_transaction_received(self, peer: Peer, tx: Transaction):
+        message_id = hashlib.sha256(tx.cert_hash + str(tx.timestamp).encode()).hexdigest()
         if message_id in self.seen_message_hashes:
-            print(f"[{self.node_id}] ❌ Duplicate TX ignored.")
             return
 
         self.seen_message_hashes.add(message_id)
-
-        message = (
-            payload.sender_mid +
-            payload.receiver_mid +
-            payload.cert_hash +
-            str(payload.timestamp).encode()
-        )
-
-        if not verify_signature(payload.signature, payload.public_key, message):
-            print(f"[{self.my_peer}] ❌ Invalid TX from {peer}")
+        if not verify_signature(tx.signature, tx.public_key,
+                                tx.sender_mid + tx.receiver_mid + tx.cert_hash + str(tx.timestamp).encode()):
+            print(f"[{self.node_id}] Invalid TX from {peer.mid.hex()}")
             return
 
-        print(f"[{self.my_peer}] ✅ TX from {payload.sender_mid.hex()} → {payload.receiver_mid.hex()} cert_hash={payload.cert_hash}")
-        self.transactions.append({
-            'sender': payload.sender_mid.hex()[:6],
-            'receiver': payload.receiver_mid.hex()[:6],
-            'cert_hash': payload.cert_hash.hex(),
-            'timestamp': payload.timestamp
-        })
-     
-        self.blockchain.add_pending_transaction(payload)
+        self.blockchain.add_pending_transaction(tx)
+        print(f"[{self.node_id}] TX received from {tx.sender_mid.hex()[:6]} to {tx.receiver_mid.hex()[:6]}")
+        self.broadcast(tx)
 
-        self.broadcast(payload)
+        print(f"[{self.node_id}] Pending transactions: {len(self.blockchain.pending_transactions)} / {self.blockchain.max_block_size}")
+        if len(self.blockchain.pending_transactions) >= self.blockchain.max_block_size:
+            self.propose_block()
 
-    # voting part
-    def init_block_voting(self):
-        self.add_message_handler(Vote, self.on_vote_received)
+
+    def propose_block(self):
+        if self.current_proposed_block is not None:
+            print(f"[{self.node_id}] A block is already proposed: {self.current_proposed_block.hash[:8]}")
+            return
+
+        proposed_block = self.blockchain.propose_block()
+        if proposed_block:
+            self.current_proposed_block = proposed_block
+            print(f"[{self.node_id}] Proposing Block {proposed_block.hash[:8]}")
+
+    def get_current_proposed_block(self):
+        if self.current_proposed_block:
+            return self.current_proposed_block.to_dict()
+        return None
+
+
+    def create_and_broadcast_transaction(self, recipient_id, issuer_id, cert_hash, db_id):
+        timestamp = time()
+        cert_hash_bytes = bytes.fromhex(cert_hash) if len(cert_hash) == 64 else cert_hash.encode()
+
+        message = (
+            self.my_peer.mid +
+            b"api_receiver" +
+            cert_hash_bytes +
+            str(timestamp).encode()
+        )
+
+        signature = default_eccrypto.create_signature(self.my_key, message)
+
+        transaction = Transaction(
+            sender_mid=self.my_peer.mid,
+            receiver_mid=b"api_receiver",
+            cert_hash=cert_hash_bytes,
+            timestamp=timestamp,
+            signature=signature,
+            public_key=default_eccrypto.key_to_bin(self.my_key.pub())
+        )
+
+        self.broadcast(transaction)
+
+        print(f"[{self.node_id}] Transaction created and broadcasted: {cert_hash[:8]}")
+
+        return {
+            "recipient_id": recipient_id,
+            "issuer_id": issuer_id,
+            "cert_hash": cert_hash,
+            "db_id": db_id,
+            "timestamp": timestamp
+        }
 
     @lazy_wrapper(Vote)
     def on_vote_received(self, peer: Peer, vote: Vote):
@@ -290,33 +262,36 @@ class BlockchainCommunity(Community, PeerObserver):
 
         print(f"[{self.node_id}] Received Vote {vote.vote_decision.decode()} from {vote.voter_mid.hex()[:6]} on Block {block_hash_str[:6]}")
 
-        # Check if we have 3 accepts votes for this block
-        if sum(vote.vote_decision.decode() == b'accept' for v in self.vote_collections[block_hash_str]) >= 3:
-            print(f"[{self.node_id}] Block {block_hash_str[:6]} has 3+ votes!")
+        # Check if we have 3 accepts
+        if sum(1 for v in self.vote_collections[block_hash_str] if v.vote_decision == b'accept') >= 3:
             self.finalize_block(block_hash_str)
 
-    def create_and_broadcast_vote(self, block_hash, decision):
-        vote_decision_bytes = decision.encode()
+    def create_and_broadcast_vote(self, block_hash: bytes, decision: str):
+        decision_bytes = decision.encode()
         timestamp = time()
-        message_to_sign = block_hash + self.my_peer.mid + vote_decision_bytes + str(timestamp).encode()
-        signature = default_eccrypto.create_signature(self.my_key, message_to_sign)
+        msg = block_hash + self.my_peer.mid + decision_bytes + str(timestamp).encode()
+        signature = default_eccrypto.create_signature(self.my_key, msg)
 
         vote = Vote(
             block_hash=block_hash,
             voter_mid=self.my_peer.mid,
-            vote_decision=vote_decision_bytes,
+            vote_decision=decision_bytes,
             timestamp=timestamp,
             signature=signature,
             public_key=default_eccrypto.key_to_bin(self.my_key.pub())
         )
 
-        print(f"[{self.node_id}] 🗳️ Voting {decision} on Block {block_hash.hex()[:6]}")
+        print(f"[{self.node_id}] Voting {decision} on Block {block_hash.hex()[:8]}")
         self.broadcast(vote)
 
-    def finalize_block(self, block_hash):
-        print(f"[{self.node_id}] Block {block_hash[:6]} Finalized with 3+ votes!")
-        self.blockchain.approve_block()
-
+    def finalize_block(self, block_hash_hex: str):
+        block = self.blockchain.get_proposed_block(block_hash_hex)
+        if block:
+            self.blockchain.finalize_block(block_hash_hex, validator='Validator1')
+            self.current_proposed_block = None 
+            print(f"[{self.node_id}] Block {block_hash_hex[:8]} finalized!")
+        else:
+            print(f"[{self.node_id}] Block {block_hash_hex[:8]} not found.")
 
 def start_node(node_id, developer_mode, web_port=None):
     async def boot():

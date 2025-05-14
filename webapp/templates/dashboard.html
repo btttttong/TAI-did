@@ -96,6 +96,22 @@
             background: #218838;
         }
 
+        .reject-btn {
+            padding: 12px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1.1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s ease;
+        }
+
+        .reject-btn:hover {
+            background: #dc3545;
+        }
+
         .tx-box {
             background: var(--light);
             border-radius: var(--border-radius);
@@ -186,7 +202,9 @@
                 <ul class="list" id="pending-list">
                     <!-- JS will populate -->
                 </ul>
-                <button class="approve-btn" onclick="approveBlock()">Approve Block</button>
+                <button class="approve-btn" onclick="voteBlock('accept')">Approve Block</button>
+                <button class="reject-btn" onclick="voteBlock('reject')">Reject Block</button>
+
             </div>
         </div>
     
@@ -205,28 +223,56 @@
     <script>
         async function loadDashboard() {
             try {
-                const [blocksRes, pendingRes] = await Promise.all([
-                    fetch('http://localhost:8080/api/blocks'),
-                    fetch('http://localhost:8080/api/pending_transactions')
-                ]);
-        
-                if (!blocksRes.ok || !pendingRes.ok) {
-                    throw new Error('Failed to fetch from the backend');
-                }
-        
-                const blocksData = await blocksRes.json();
-                const pendingTransactions = await pendingRes.json();
-        
-                const blocks = Array.isArray(blocksData) ? blocksData : (blocksData.blocks || []);
-                const pendingTx = Array.isArray(pendingTransactions) ? pendingTransactions : (pendingTransactions.transactions || []);
-        
-                renderPendingTransactions(pendingTx);
-                renderBlocks(blocks);
-                renderLatestTransactions(pendingTx);
+                await loadProposedBlock();
             } catch (err) {
-                console.error('Error loading dashboard:', err);
+                console.error('Failed to load proposed block:', err);
+            }
+
+            try {
+                await loadBlocksAndTransactions();
+            } catch (err) {
+                console.error('Failed to load blocks/transactions:', err);
             }
         }
+
+        async function loadProposedBlock() {
+            try {
+                const res = await fetch('http://localhost:8080/api/proposed_block');
+                if (!res.ok) throw new Error('No active block proposal.');
+
+                const data = await res.json();
+                window.latestProposedBlockHash = data.hash || null;
+                document.querySelector('.approve-btn').style.display = 'block';
+                document.querySelector('.reject-btn').style.display = 'block';
+                console.log("Loaded proposed block:", data.hash);
+            } catch (err) {
+                console.log('No active proposal.');
+                window.latestProposedBlockHash = null;
+                document.querySelector('.approve-btn').style.display = 'none';
+                document.querySelector('.reject-btn').style.display = 'none';
+            }
+        }
+
+
+        async function loadBlocksAndTransactions() {
+            const blocksRes = await fetch('http://localhost:8080/api/blocks');
+            const pendingRes = await fetch('http://localhost:8080/api/pending_transactions');
+
+            if (!blocksRes.ok || !pendingRes.ok) {
+                console.error('Failed to load blocks or pending transactions.');
+                return;
+            }
+
+            const blocksData = await blocksRes.json();
+            const pendingTx = await pendingRes.json();
+
+            renderPendingTransactions(pendingTx);
+            renderBlocks(blocksData);
+            renderLatestTransactions(pendingTx);
+        }
+
+
+
         function createTransactionItem(tx) {
             const li = document.createElement('li');
             li.className = 'list-item';
@@ -293,25 +339,40 @@
             sorted.forEach(tx => container.appendChild(createTransactionItem(tx)));
         }
         
-        async function approveBlock() {
+        async function voteBlock(decision) {
+            if (!window.latestProposedBlockHash) {
+                alert("No block proposal available for voting.");
+                return;
+            }
+
             try {
-                const res = await fetch('http://localhost:8080/api/approve_block', {
-                    method: 'POST'
+                const res = await fetch('http://localhost:8080/api/vote_block', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        decision: decision,
+                        block_hash: window.latestProposedBlockHash
+                    })
                 });
-                
-                // Handle response that might already be JSON or needs parsing
-                const result = typeof res === 'string' ? JSON.parse(res) : (await res.json());
-                
-                alert("Block approved!");
-                loadDashboard(); // Refresh after approving
+
+                if (!res.ok) {
+                    throw new Error('Failed to submit vote');
+                }
+
+                const result = await res.json();
+                alert(result.message || "Vote submitted!");
+                loadDashboard();
+                loadProposedBlock();
             } catch (err) {
-                console.error("Approval failed:", err);
-                alert("Failed to approve block.");
+                console.error("Voting failed:", err);
+                alert("Failed to submit vote.");
             }
         }
-    
         
         window.onload = loadDashboard;
+
         </script>
         
 </body>
