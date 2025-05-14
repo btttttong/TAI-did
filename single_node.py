@@ -36,13 +36,36 @@ def verify_signature(signature: bytes, public_key: bytes, message: bytes) -> boo
 
 class BlockchainCommunity(Community, PeerObserver):
     community_id = b"myblockchain-test-01"
-
     def __init__(self, settings: CommunitySettings) -> None:
         super().__init__(settings)
+        # - Behavior switches -
+        self.developer_mode = 1
+        self.troll_master = "ACTIVE"
+        # - key processing -
         self.known_peers = set()
         self.seen_message_hashes = set()
         self.my_key = default_eccrypto.key_from_private_bin(self.my_peer.key.key_to_bin())
         self.blockchain = Blockchain(max_block_size=10 , validators= ['Validator1'])
+        self.sybil_attempts = []
+        self.authorized_validator = self.my_peer.mid
+        # - Resistance components -
+        # > Sybill switch <
+        self.sybill_failsafe = False
+        if self.sybill_failsafe == True:
+            print("Sybil attack failsafe active")
+        # > Double voting failsafe <
+        self.double_voting_failsafe = True
+        if self.double_voting_failsafe == True:
+            print("Double voting failsafe active")
+        # > Byzantine attack failsafe <
+        self.byzantine_failsafe = False
+        if self.byzantine_failsafe == True:
+            print("Byzantine attack shield active")
+        # > Message replay failsafe <
+        self.message_replay_failsafe = False
+        if self.message_replay_failsafe == True:
+            print("Message replay failsafe active")
+        # - Cache storage -
         self.pending_transactions = []
         self.vote_collections = {}
         self.transactions = []
@@ -56,7 +79,6 @@ class BlockchainCommunity(Community, PeerObserver):
         for peer in self.get_peers():
             if peer != exclude_peer:
                 self.ez_send(peer, payload)
-
 
     def on_peer_added(self, peer: Peer) -> None:
         self.known_peers.add(peer.mid)
@@ -160,7 +182,6 @@ class BlockchainCommunity(Community, PeerObserver):
     # voting part
     def init_block_voting(self):
         self.add_message_handler(Vote, self.on_vote_received)
-        
 
     @lazy_wrapper(Vote)
     def on_vote_received(self, peer: Peer, vote: Vote):
@@ -174,8 +195,24 @@ class BlockchainCommunity(Community, PeerObserver):
             self.vote_collections[block_hash_str] = []
 
         voter_mids = [v.voter_mid for v in self.vote_collections[block_hash_str]]
-        if vote.voter_mid not in voter_mids:
-            self.vote_collections[block_hash_str].append(vote)
+        if self.double_voting_failsafe == False:
+            if vote.voter_mid not in voter_mids:
+                self.vote_collections[block_hash_str].append(vote)
+        elif self.double_voting_failsafe == True:
+            if vote.voter_mid not in voter_mids:
+                # > Processes vote <
+                self.vote_collections[block_hash_str].append(vote)
+            elif vote.voter_mid in voter_mids:
+                # > Ceases processing of vote if already voted <
+                if self.troll_master == "ACTIVE":
+                    print(f"\n[{self.node_id}] ⚠️ Double voting attempt by {vote.voter_mid.hex()[:6]} on block {block_hash_str[:6]}")
+                else:
+                    print(f"[{self.node_id}] ⚠️ Double voting attempt by {vote.voter_mid.hex()[:6]} on block {block_hash_str[:6]}")
+
+                if self.troll_master == "ACTIVE":
+                    print("Is this you trying to double vote? -_-")
+                    print(f"Bad news for you I planned for this kind of nonsense. This shall not pass.\n🖕")
+                return
 
         print(f"[{self.node_id}] Received Vote {vote.vote_decision.decode()} from {vote.voter_mid.hex()[:6]} on Block {block_hash_str[:6]}")
 
@@ -262,7 +299,6 @@ def start_node(node_id, developer_mode, web_port=None):
             await ipv8.stop()
             try:
                 os.unlink(key_path)
-
             except:
                 pass
                 
