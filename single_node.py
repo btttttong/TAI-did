@@ -56,7 +56,7 @@ class BlockchainCommunity(Community, PeerObserver):
         if self.byzantine_failsafe == True:
             print("Byzantine attack shield active")
         # > Message replay failsafe <
-        self.message_replay_failsafe = False
+        self.message_replay_failsafe = True
         if self.message_replay_failsafe == True:
             print("Message replay failsafe active")
         # - key processing -
@@ -66,6 +66,7 @@ class BlockchainCommunity(Community, PeerObserver):
         self.authorized_validator = self.my_peer.mid
         self.blockchain = Blockchain(max_block_size=10, validators=['Validator1' if self.sybill_failsafe == False else self.authorized_validator])
         self.sybil_attempts = []
+        self.message_replay_violators = []
         # - Cache storage -
         self.pending_transactions = []
         self.vote_collections = {}
@@ -186,11 +187,33 @@ class BlockchainCommunity(Community, PeerObserver):
 
     @lazy_wrapper(Vote)
     def on_vote_received(self, peer: Peer, vote: Vote):
+        vote_ID = hashlib.sha256(vote.block_hash + vote.voter_mid + vote.vote_decision + str(vote.timestamp).encode()).hexdigest()
         message_to_verify = vote.block_hash + vote.voter_mid + vote.vote_decision + str(vote.timestamp).encode()
         if not verify_signature(vote.signature, vote.public_key, message_to_verify):
             print(f"[{self.node_id}] Invalid Vote Signature from {peer.mid.hex()}")
             return
 
+        # > Message replay failsafe <
+        if self.message_replay_failsafe == True:
+            if vote_ID in self.seen_message_hashes:
+                print(f"[{self.node_id}] 🔁 Replay vote detected from {vote.voter_mid.hex()[:6]} on block {vote.block_hash.hex()[:6]}")
+                self.message_replay_violators.append({
+                    "Node ID": self.node_id,
+                    "Voter_mid": vote.voter_mid.hex(),
+                    "Block hash": vote.block_hash.hex(),
+                    "Vote ID": vote_ID,
+                    "Timestamp": time()
+                    })
+                if self.developer_mode == 1:
+                    print("Violator has been documented")
+                    if self.troll_master == "ACTIVE":
+                        print("You think I didn't consider this? Nah. We take this seriously.")
+                        print("Yours truly E3N_7274 has fucked your plan to resend your last vote ;)")
+                return
+
+            self.seen_message_hashes.add(vote_ID)
+
+        # > Sybil protective failsafe <
         if self.sybill_failsafe == True:
             if vote.voter_mid != self.authorized_validator:
                 ip_address_tracked = getattr(peer, "address", ("unknown",))[0]
