@@ -25,6 +25,9 @@ def node_routes(app, community):
     app.add_url_rule('/api/blocks', 'get_all_blocks', block_controller.get_all_blocks, methods=['GET'])
     app.add_url_rule('/api/vote_block', 'vote_block', block_controller.vote_block, methods=['POST']) 
 
+    #cert
+    app.add_url_rule('/api/certs', 'get_cert_by_public_key', cert_controller.get_cert_by_public_key)
+
 def user_routes(app):
     # Initialize controllers
     page_controller = PageController()
@@ -34,6 +37,8 @@ def user_routes(app):
     app.add_url_rule('/login', 'login_page', page_controller.login_page, methods=['GET'])
     app.add_url_rule('/login', 'login_user', user_controller.login_user, methods=['POST'])
     app.add_url_rule('/logout', 'logout', user_controller.logout_user)
+    
+    app.add_url_rule('/', 'index', page_controller.get_index)
 
     app.add_url_rule('/register', 'register_page', page_controller.register_page, methods=['GET'])
     app.add_url_rule('/register', 'register_user', user_controller.register_user, methods=['POST'])
@@ -41,6 +46,10 @@ def user_routes(app):
     app.add_url_rule('/dashboard', 'dashboard', user_controller.dashboard)
 
     # API routes
-    app.add_url_rule('/api/public_key/<user_id>', 'public_key', user_controller.get_public_key)
+    app.add_url_rule('/api/public_key', 'public_key', user_controller.get_public_key)
+
+
+
+
 
     

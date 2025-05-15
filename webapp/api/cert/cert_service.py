@@ -1,11 +1,13 @@
 from flask import jsonify, render_template
-from .func.cert_utils import get_certificate_by_hash, get_certificate_by_public_key
-from binascii import unhexlify
 
+from binascii import unhexlify
+from models.cert import CertificateRepository
 
 class CertService:
     def __init__(self, community):
         self.community = community
+        self.repo = CertificateRepository()
+
 
     def get_cert(self, cert_hash):
         try:
@@ -13,13 +15,12 @@ class CertService:
         except Exception as e:
             return {"error": f"Invalid cert_hash encoding: {str(e)}"}
 
-        data = get_certificate_by_hash(cert_hash)
-        return data
+        #data = get_certificate_by_hash(cert_hash)
+        return None
     
     def get_cert_by_public_key(self, public_key):
-
-        data = get_certificate_by_public_key(public_key)
-        return data
+        certs = self.repo.get_certificates_by_user(public_key)
+        return certs
 
     def get_transactions(self):
         transactions = self.community.transactions[-10:]
@@ -33,3 +34,4 @@ class CertService:
             recipient_id, issuer_id, cert_hash, db_id
         )
         return {"message": "Transaction sent", "transaction": result}
+    

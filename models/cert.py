@@ -14,6 +14,25 @@ class CertificateRepository:
     def __init__(self, db_path="users.db"):
         self.conn = sqlite3.connect(db_path)
         self.create_table()
+        self.certs_db = {
+            "greater": {
+
+                "certificates": [  # list of cert dicts for this user
+                    {
+                        "hash": "abc123",
+                        "recipient": "greater",
+                        "issuer": "authority",
+                        "timestamp": 1680000000
+                    },
+                    {
+                        "hash": "def456",
+                        "recipient": "greater",
+                        "issuer": "authority",
+                        "timestamp": 1685000000
+                    }
+                ]
+            }
+        }
 
     def create_table(self):
         query = """
@@ -36,11 +55,14 @@ class CertificateRepository:
         self.conn.execute(query, (cert.cert_id, cert.user_id, cert.cert_hash, cert.issued_at))
         self.conn.commit()
 
-    def get_certificates_by_user(self, user_id: str) -> List[Certificate]:
-        cursor = self.conn.execute("SELECT * FROM certificates WHERE user_id = ?", (user_id,))
-        rows = cursor.fetchall()
-        return [Certificate(*row) for row in rows]
-
+    def get_certificates_by_user(self, public_key: str):
+        #cursor = self.conn.execute("SELECT * FROM certificates WHERE user_id = ?", (user_id,))
+        #rows = cursor.fetchall()
+        user_certs = self.certs_db.get(public_key)
+        if user_certs is None:
+            return []
+        return user_certs.get("certificates", [])
+    
     def get_all_certificates(self) -> List[Certificate]:
         cursor = self.conn.execute("SELECT * FROM certificates")
         rows = cursor.fetchall()
