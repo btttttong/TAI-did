@@ -110,23 +110,29 @@ class BlockchainCommunity(Community, PeerObserver):
             self.propose_block()
 
     #TODO: Implement the voting decision method
-    # def voting_decision(self, block_hash: bytes, decision: str):
-    #     decision_bytes = decision.encode()
-    #     timestamp = time()
-    #     msg = block_hash + self.my_peer.mid + decision_bytes + str(timestamp).encode()
-    #     signature = default_eccrypto.create_signature(self.my_key, msg)
+    def voting_decision(self, block_hash: bytes, decision: str):
+        if self.developer_mode == 1:
+            print("Voting decision in progress")
+        # <------------>
+        accepted_choices = ["accept", "reject"]
+        if decision not in accepted_choices:
+            if self.developer_mode == 1:
+                print("(!) Failure to make a decision")
+            print(f"[{self.node_id}] Invalid decision -> '{decision}' must be '{accepted_choices[0]}' or '{accepted_choices[1]}'")
+            return
 
-    #     vote = Vote(
-    #         block_hash=block_hash,
-    #         voter_mid=self.my_peer.mid,
-    #         vote_decision=decision_bytes,
-    #         timestamp=timestamp,
-    #         signature=signature,
-    #         public_key=default_eccrypto.key_to_bin(self.my_key.pub())
-    #     )
-
-    #     print(f"[{self.node_id}] Voting {decision} on Block {block_hash.hex()[:8]}")
-    #     self.broadcast(vote)
+        if decision == accepted_choices[0]:
+            # > Accepted choices <
+            self.create_and_broadcast_vote(block_hash=block_hash, decision=decision)
+            if self.developer_mode == 1:
+                print("Accepted broadcast signal completed")
+        elif decision == accepted_choices[1]:
+            # > Rejected choice <
+            if self.developer_mode == 1:
+                print("Rejection acknowledged. Broadcast dormant")
+        # <------------>
+        if self.developer_mode == 1:
+            print("Voting decision has been made")
 
     def propose_block(self):
         if self.current_proposed_block is not None:
