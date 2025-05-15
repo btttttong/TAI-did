@@ -14,7 +14,6 @@ def node_routes(app, community):
     page_controller = PageController()
     cert_controller = CertController(community)
     block_controller = BlockController(community)
-    
     # > Static page routes <
     app.add_url_rule('/', 'index', page_controller.get_index)
 
@@ -34,20 +33,21 @@ def node_routes(app, community):
     app.add_url_rule('/api/certs', 'get_cert_by_public_key', cert_controller.get_cert_by_public_key)
 
 def user_routes(app):
-    # Initialize controllers
+    # > Initialize controllers <
     page_controller = PageController()
     user_controller = UserController()
 
-    # Static page routes
+    # > Static page routes <
+    # - Login pages -
     app.add_url_rule('/login', 'login_page', page_controller.login_page, methods=['GET'])
     app.add_url_rule('/login', 'login_user', user_controller.login_user, methods=['POST'])
     app.add_url_rule('/logout', 'logout', user_controller.logout_user)
-    
+    # - Index -
     app.add_url_rule('/', 'index', page_controller.get_index)
-
+    # - Registers -
     app.add_url_rule('/register', 'register_page', page_controller.register_page, methods=['GET'])
     app.add_url_rule('/register', 'register_user', user_controller.register_user, methods=['POST'])
-
+    # - Dashboard -
     app.add_url_rule('/dashboard', 'dashboard', user_controller.dashboard)
 
     # API routes
