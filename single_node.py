@@ -120,6 +120,8 @@ class BlockchainCommunity(Community, PeerObserver):
             self.current_proposed_block = proposed_block
             print(f"[{self.node_id}] Proposing Block {proposed_block.hash[:8]}")
 
+            self.create_and_broadcast_vote(bytes.fromhex(proposed_block.hash), 'accept')
+
     def get_current_proposed_block(self):
         if self.current_proposed_block:
             return self.current_proposed_block.to_dict()
@@ -162,7 +164,15 @@ class BlockchainCommunity(Community, PeerObserver):
 
     @lazy_wrapper(Vote)
     def on_vote_received(self, peer: Peer, vote: Vote):
-        existing_votes = [v for v in self.vote_collections[vote.block_hash.hex()] if v.voter_mid == vote.voter_mid]
+        block_hash_str = vote.block_hash.hex()
+
+        # ✅ Ensure the collection exists before accessing it
+        if block_hash_str not in self.vote_collections:
+            self.vote_collections[block_hash_str] = []
+
+        # ✅ Now it's safe to read existing votes
+        existing_votes = [v for v in self.vote_collections[block_hash_str] if v.voter_mid == vote.voter_mid]
+
         vote_ID = hashlib.sha256(vote.block_hash + vote.voter_mid + vote.vote_decision + str(vote.timestamp).encode()).hexdigest()
         message_to_verify = vote.block_hash + vote.voter_mid + vote.vote_decision + str(vote.timestamp).encode()
         if not verify_signature(vote.signature, vote.public_key, message_to_verify):
@@ -290,6 +300,9 @@ class BlockchainCommunity(Community, PeerObserver):
             self.blockchain.finalize_block(block_hash_hex, validator='Validator1')
             self.current_proposed_block = None 
             print(f"[{self.node_id}] Block {block_hash_hex[:8]} finalized!")
+
+            if len(self.blockchain.pending_transactions) >= self.blockchain.max_block_size:
+                self.propose_block()
         else:
             print(f"[{self.node_id}] Block {block_hash_hex[:8]} not found.")
 
