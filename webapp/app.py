@@ -4,15 +4,19 @@ from flask_cors import CORS
 
 class NodeWeb:
     def __init__(self, community, port=8080):
+        self.developer_mode = 1
         self.community = community
         self.port = port
         self.app = Flask(__name__)
         CORS(self.app)
         node_routes(self.app, community)
+        if self.developer_mode == 1:
+            print(f"Current configured port: {self.port}")
 
     def start(self):
         """Run the Flask server on the main thread"""
-        print(f"Flask visualizer running on http://localhost:{self.port}")
+        if self.developer_mode == 1:
+            print(f"Flask visualizer running on http://localhost:{self.port}")
         self.app.run(host='0.0.0.0', port=self.port)
 
 class MainWeb:
