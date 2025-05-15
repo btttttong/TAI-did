@@ -109,6 +109,23 @@ class BlockchainCommunity(Community, PeerObserver):
         if len(self.blockchain.pending_transactions) >= self.blockchain.max_block_size:
             self.propose_block()
 
+    # def voting_decision(self, block_hash: bytes, decision: str):
+    #     decision_bytes = decision.encode()
+    #     timestamp = time()
+    #     msg = block_hash + self.my_peer.mid + decision_bytes + str(timestamp).encode()
+    #     signature = default_eccrypto.create_signature(self.my_key, msg)
+
+    #     vote = Vote(
+    #         block_hash=block_hash,
+    #         voter_mid=self.my_peer.mid,
+    #         vote_decision=decision_bytes,
+    #         timestamp=timestamp,
+    #         signature=signature,
+    #         public_key=default_eccrypto.key_to_bin(self.my_key.pub())
+    #     )
+
+    #     print(f"[{self.node_id}] Voting {decision} on Block {block_hash.hex()[:8]}")
+    #     self.broadcast(vote)
 
     def propose_block(self):
         if self.current_proposed_block is not None:
