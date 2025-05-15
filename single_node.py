@@ -109,8 +109,9 @@ class BlockchainCommunity(Community, PeerObserver):
         if len(self.blockchain.pending_transactions) >= self.blockchain.max_block_size:
             self.propose_block()
 
-    #TODO: Implement the voting decision method
+
     def voting_decision(self, block_hash: bytes, decision: str):
+        # TODO: Implement the voting decision method
         if self.developer_mode == 1:
             print("Voting decision in progress")
         # <------------>
