@@ -19,7 +19,7 @@ class MainWeb:
     def __init__(self, port=5050):
         self.port = port
         self.app = Flask(__name__)
-        CORS(self.app)
+        CORS(self.app, supports_credentials=True, origins=["http://localhost:8080"])
         self.app.secret_key = 'secret-key' 
 
         self._add_chrome_devtools_route()
