@@ -3,6 +3,7 @@ from .block_service import BlockService
 
 class BlockController:
     def __init__(self, community):
+        self.developer_mode = 1
         self.community = community
         self.service = BlockService(community)
 
@@ -45,7 +46,17 @@ class BlockController:
             print("Error submitting vote:", str(e))
             return jsonify({"error": str(e)}), 400
 
-        
+    def manual_vote(self):
+        if self.developer_mode == 1:
+            print("Manual voting in progress...")
+        # <--------->
+        try:
+            pass
+        except:
+            pass
+        # <--------->
+        if self.developer_mode == 1:
+            print("Manual voting completed.")
     def get_proposed_block(self):
         try:
             data = self.service.get_proposed_block()
@@ -57,7 +68,3 @@ class BlockController:
         except Exception as e:
             print("Error fetching proposed block:", str(e))
             return jsonify({"error": "Internal server error"}), 500
-
-
-
-
