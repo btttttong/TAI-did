@@ -351,6 +351,8 @@ def start_node(node_id, developer_mode, web_port=None):
                           default_bootstrap_defs, {}, [('started', )])
 
         ipv8 = IPv8(builder.finalize(), extra_communities={'BlockchainCommunity': BlockchainCommunity})
+        if developer_mode == True:
+            print("IPV8 finalized. Deployment cleared.")
 
         try:
             await ipv8.start()
