@@ -51,12 +51,42 @@ class BlockController:
             print("Manual voting in progress...")
         # <--------->
         try:
-            pass
-        except:
-            pass
+            # <------------------------->
+            data_gathered = request.json
+            block_hash_hex_code = data_gathered.get("block_hash", "")
+            decision = data_gathered.get("decision", "").lower()
+            if self.developer_mode == 1:
+                print(f"Manual Vote Requested: Block {block_hash_hex_code[:8]} Decision: {decision}")
+
+            accepted_conditions = ["accept", "reject"]
+            if not block_hash_hex_code or decision not in accepted_conditions:
+                return jsonify({"error": "Invalid input. Must include block_hash and decision (accept/reject)."}), 400
+
+            block_hash = bytes.fromhex(block_hash_hex_code)
+            self.community.voting_decision(block_hash, decision=decision)
+            if self.developer_mode == 1:
+                print("Justification in progress...")
+
+            json_conversion = jsonify ({
+            "status": "Manual vote submitted successfully",
+            "block_hash": block_hash_hex_code,
+            "decision": decision
+                })
+
+            if self.developer_mode == 1:
+                print("Justification completed")
+                print("Manual voting completed.")
+
+            return json_conversion
+            # <------------------------->
+        except Exception as e:
+            # <------------------------->
+            if self.developer_mode == 1:
+                print(f"Error in manual voting process detected")
+            return jsonify({"error": str(e)}), 500
+            # <------------------------->
         # <--------->
-        if self.developer_mode == 1:
-            print("Manual voting completed.")
+
     def get_proposed_block(self):
         try:
             data = self.service.get_proposed_block()
