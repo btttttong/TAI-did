@@ -109,6 +109,7 @@ class BlockchainCommunity(Community, PeerObserver):
         if len(self.blockchain.pending_transactions) >= self.blockchain.max_block_size:
             self.propose_block()
 
+    #TODO: Implement the voting decision method
     # def voting_decision(self, block_hash: bytes, decision: str):
     #     decision_bytes = decision.encode()
     #     timestamp = time()
