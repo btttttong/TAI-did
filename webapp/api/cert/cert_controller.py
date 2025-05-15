@@ -1,4 +1,4 @@
-from flask import jsonify, render_template, request
+from flask import jsonify, render_template, request, session
 from .cert_service import CertService
 
 class CertController:
@@ -14,8 +14,12 @@ class CertController:
         except Exception as e:
             return jsonify({"error": "Internal server error"}), 500
         
-    def get_cert_by_public_key(self, public_key):
+    def get_cert_by_public_key(self):
         try:
+            public_key = request.args.get('public_key')
+            if not public_key:
+                return jsonify({"error": "Missing public_key parameter"}), 400
+
             data = self.service.get_cert_by_public_key(public_key)
             return jsonify(data)
         except ValueError as e:
@@ -46,4 +50,5 @@ class CertController:
         except Exception as e:
             print("Exception in send_transaction:", e)
             return jsonify({"error": str(e)}), 500
+        
 

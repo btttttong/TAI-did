@@ -5,7 +5,7 @@ class PageController(MethodView):
     def __init__(self):
         pass
 
-    def get_index():
+    def get_index(self):
         return render_template("index.html")
     
     def login_page(self):

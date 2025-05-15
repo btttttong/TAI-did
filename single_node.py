@@ -12,7 +12,7 @@ from ipv8.keyvault.crypto import default_eccrypto, ECCrypto
 from cryptography.exceptions import InvalidSignature
 
 from webapp.app import NodeWeb
-from webapp.api.cert.cert_repo import CertDBHandler
+
 from models.transaction import Transaction
 from models.blockchain import Blockchain
 from models.vote import Vote
@@ -342,7 +342,7 @@ def start_node(node_id, developer_mode, web_port=None):
             if web_port is not None:
                 community = ipv8.get_overlay(BlockchainCommunity)
                 community.node_id = node_id
-                community.db = CertDBHandler(node_id)
+                #community.db = CertDBHandler(node_id)
                 community.web = NodeWeb(community, port=web_port)
                 
                 # Run Flask in a separate thread properly

@@ -1,62 +1,97 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Certificate Transactions</title>
+    <meta charset="UTF-8">
+    <title>User Certificates</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .cert-container {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .cert-container h3 {
+            margin-top: 0;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+
+        #certs {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Latest Certificate Transactions</h1>
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Sender</th>
-                <th>Receiver</th>
-                <th>Certificate Hash</th>
-                <th>Certificate Data</th> <!-- Added for displaying certificate data -->
-                <th>Timestamp</th>
-            </tr>
-        </thead>
-        <tbody id="transaction-body"></tbody>
-    </table>
 
-    <script>
-    // Fetching transaction data
-    fetch('/api/transactions')
-        .then(res => res.json())
-        .then(data => {
-            const tbody = document.getElementById("transaction-body");
+<h1>My Certificates</h1>
 
-            // Loop through each transaction and fetch certificate data for each
-            data.transactions.forEach(tx => {
-                // Fetch the certificate data by cert_hash
-                fetch(`/api/certificate/${tx.cert_hash}`)
-                    .then(res => res.json())
-                    .then(certData => {
-                        // Create table row with transaction and certificate data
-                        const row = `<tr>
-                            <td>${tx.sender}</td>
-                            <td>${tx.receiver}</td>
-                            <td>${tx.cert_hash}</td>
-                            <td>${certData ? JSON.stringify(certData) : 'No data found'}</td>
-                            <td>${new Date(tx.timestamp * 1000).toLocaleString()}</td>
-                        </tr>`;
-                        tbody.innerHTML += row;
-                    })
-                    .catch(err => {
-                        console.error('Error fetching certificate data:', err);
-                        const row = `<tr>
-                            <td>${tx.sender}</td>
-                            <td>${tx.receiver}</td>
-                            <td>${tx.cert_hash}</td>
-                            <td>Failed to fetch certificate</td>
-                            <td>${new Date(tx.timestamp * 1000).toLocaleString()}</td>
-                        </tr>`;
-                        tbody.innerHTML += row;
-                    });
-            });
-        })
-        .catch(err => {
-            console.error('Error fetching transactions:', err);
+<div id="certs">
+    <!-- Certificates will be inserted here -->
+</div>
+
+<script>
+    async function loadUserPublicKey() {
+        const res = await fetch('http://localhost:5050/api/public_key', {
+            credentials: 'include'
         });
-    </script>
+        if (!res.ok) throw new Error('User not authenticated');
+        const data = await res.json();
+        return data.public_key;
+    }
+
+    async function loadCertificates() {
+        try {
+            const publicKey = await loadUserPublicKey();
+
+            const response = await fetch(`http://localhost:8080/api/certs?public_key=${encodeURIComponent(publicKey)}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch certificates.');
+            }
+            const certs = await response.json();
+
+            const certContainer = document.getElementById('certs');
+            certContainer.innerHTML = '';
+
+            if (!certs.length) {
+                certContainer.innerHTML = '<p>No certificates found.</p>';
+                return;
+            }
+
+            certs.forEach(cert => {
+                const div = document.createElement('div');
+                div.className = 'cert-container';
+                div.innerHTML = `
+                    <h3>Certificate</h3>
+                    <p><strong>Hash:</strong> ${cert.hash}</p>
+                    <p><strong>Issued To:</strong> ${cert.recipient}</p>
+                    <p><strong>Issuer:</strong> ${cert.issuer}</p>
+                    <p><strong>Timestamp:</strong> ${new Date(cert.timestamp * 1000).toLocaleString()}</p>
+                `;
+                certContainer.appendChild(div);
+            });
+        } catch (err) {
+            document.getElementById('certs').innerHTML = `<p class="error">${err.message}</p>`;
+        }
+    }
+
+    window.onload = loadCertificates;
+</script>
+
+
 </body>
 </html>

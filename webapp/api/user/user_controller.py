@@ -54,7 +54,7 @@ class UserController:
             
         public_key_bin = session['public_key_bin']
         pubkey_info = {
-            "public_key": public_key_bin.hex(),
+            "public_key": public_key_bin,
             "username": self.user_service.get_username(public_key_bin),
             "role": self.user_service.get_role(public_key_bin)
         }
