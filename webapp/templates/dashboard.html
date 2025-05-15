@@ -180,9 +180,46 @@
             border-radius: 4px;
         }
 
+        nav {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-left, .nav-right {
+            display: flex;
+            gap: 15px;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
     </style>
 </head>
 <body>
+
+    <!-- Top Navigation Bar -->
+    <nav>
+        <div class="nav-left">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+        </div>
+        <div class="nav-right">
+            <a href="/login">Login</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </nav>
+
     <h1>Blockchain Dashboard</h1>
     <div class="container">
         <!-- Left Column: Blocks -->
@@ -208,7 +245,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Right Column: Latest Transactions -->
         <div class="column">
             <div class="card">
@@ -406,7 +443,32 @@
             }
         }
         
-        window.onload = loadDashboard;
+        async function updateNavBar() {
+        const navRight = document.querySelector('.nav-right');
+        try {
+            const res = await fetch('http://localhost:5050/api/public_key', {
+                credentials: 'include'
+            });
+
+            if (!res.ok) throw new Error();
+
+            const user = await res.json();
+
+            navRight.innerHTML = `
+                <a href="/logout">Logout</a>
+            `;
+        } catch {
+            navRight.innerHTML = `
+                <a href="/login">Login</a>
+            `;
+        }
+    }
+
+    window.onload = async function () {
+        await updateNavBar();
+        await loadCertificates();
+    };
+
 
         </script>
         
