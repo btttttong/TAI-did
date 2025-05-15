@@ -1,6 +1,7 @@
 from flask import request, session, redirect, render_template, jsonify
 from .user_service import UserService
 import os
+from flask_cors import cross_origin
 
 class UserController:
     def __init__(self):
@@ -9,7 +10,6 @@ class UserController:
         self.session_key = os.urandom(24).hex()  # For session security
 
     def login_user(self):
-        """Handle the login process using public key and signature."""
         if request.method == 'GET':
             return render_template("login.html")
         
@@ -18,7 +18,6 @@ class UserController:
         if not public_key_bin:
             return render_template("login.html", error="Public key or signature missing")
         
-        # Step 1: Check if the user exists by public key
         user = self.user_service.start_login(public_key_bin)
         if not user:
             return render_template("login.html", error="User not found")
@@ -47,6 +46,7 @@ class UserController:
         
         return render_template("dashboard.html", username=session.get('username'))
 
+    @cross_origin(supports_credentials=True, origins="http://localhost:8080")
     def get_public_key(self):
         """API endpoint to get public key info"""
         if not session.get('authenticated'):

@@ -14,10 +14,7 @@ class UserService:
                 "nonce": None  # For tracking active challenges
             }
         }
-    
-    # ----------------------
-    # Registration Process
-    # ----------------------
+
     def register_user(self, public_key_bin, username, role):
         pubkey_hex = public_key_bin.hex()
         """Register a new user with their PUBLIC key only"""
@@ -31,17 +28,12 @@ class UserService:
         }
         return True
 
-    # ----------------------
-    # Authentication Process
-    # ----------------------
     def start_login(self, public_key_bin):
         """Step 1: Server generates a challenge"""
         if public_key_bin not in self.users_db:
             return None  # User doesn't exist
             
-        nonce = os.urandom(32)  # Random challenge
-        self.users_db[public_key_bin]["nonce"] = nonce
-        return nonce
+        return True
 
     def get_role(self, public_key_bin):
         user = self.users_db.get(public_key_bin)
