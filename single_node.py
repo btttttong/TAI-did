@@ -83,7 +83,6 @@ class BlockchainCommunity(Community, PeerObserver):
     def on_peer_removed(self, peer: Peer):
         print(f"[{self.node_id}] Peer {peer.mid.hex()} removed.")
 
-
     def started(self):
         self.network.add_peer_observer(self)
         self.add_message_handler(Transaction, self.on_transaction_received)
@@ -108,7 +107,6 @@ class BlockchainCommunity(Community, PeerObserver):
         print(f"[{self.node_id}] Pending transactions: {len(self.blockchain.pending_transactions)} / {self.blockchain.max_block_size}")
         if len(self.blockchain.pending_transactions) >= self.blockchain.max_block_size:
             self.propose_block()
-
 
     def voting_decision(self, block_hash: bytes, decision: str):
         # TODO: Implement the voting decision method
@@ -151,7 +149,6 @@ class BlockchainCommunity(Community, PeerObserver):
         if self.current_proposed_block:
             return self.current_proposed_block.to_dict()
         return None
-
 
     def create_and_broadcast_transaction(self, recipient_id, issuer_id, cert_hash, db_id):
         timestamp = time()
@@ -220,10 +217,7 @@ class BlockchainCommunity(Community, PeerObserver):
                     if self.troll_master == "ACTIVE":
                         print("You think I didn't consider this? Nah. We take this seriously.")
                         print("Yours truly E3N_7274 has fucked your plan to resend your last vote ;)")
-                        if self.TTS_soul_snatcher == True:
-                            phrases_A = ["You think I didn't consider this? Nah. We take this seriously.",
-                                         "Yours truly E3N_7274 has fucked your plan to resend your last vote"]
-                            # > TTS <
+
                 return
 
             self.seen_message_hashes.add(vote_ID)
@@ -263,10 +257,7 @@ class BlockchainCommunity(Community, PeerObserver):
                     if self.troll_master == "ACTIVE":
                         print("Im sorry you think we didn't plan for you?!?!?!\n🖕")
                         print("I DECLARE YOU SHALL NOT PASS")
-                        if self.TTS_soul_snatcher == True:
-                            phrases_B = ["I am sorry you think we didn't plan for you",
-                                         "I DECLARE YOU SHALL NOT PASS"]
-                            # > TTS deployment <
+
                 return
 
         block_hash_str = vote.block_hash.hex()
