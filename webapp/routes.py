@@ -52,9 +52,3 @@ def user_routes(app):
 
     # API routes
     app.add_url_rule('/api/public_key', 'public_key', user_controller.get_public_key)
-
-
-
-
-
-    
