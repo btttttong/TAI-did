@@ -197,17 +197,18 @@
     
         <!-- Middle Column: Pending Transactions -->
         <div class="column">
-            <div class="card pending-transactions">
-                <div class="card-title">Pending Transactions</div>
-                <ul class="list" id="pending-list">
-                    <!-- JS will populate -->
-                </ul>
-                <button class="approve-btn" onclick="voteBlock('accept')">Approve Block</button>
-                <button class="reject-btn" onclick="voteBlock('reject')">Reject Block</button>
-
+            <div class="card">
+                <div class="card-title">Proposed Block</div>
+                <div id="proposed-block">
+                    <!-- JS will populate proposed block here -->
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="approve-btn" onclick="approveBlock()">Approve</button>
+                    <button class="reject-btn" onclick="rejectBlock()">Reject</button>
+                </div>
             </div>
         </div>
-    
+        
         <!-- Right Column: Latest Transactions -->
         <div class="column">
             <div class="card">
@@ -241,6 +242,9 @@
                 if (!res.ok) throw new Error('No active block proposal.');
 
                 const data = await res.json();
+
+                renderPendingTransactions(data);
+
                 window.latestProposedBlockHash = data.hash || null;
                 document.querySelector('.approve-btn').style.display = 'block';
                 document.querySelector('.reject-btn').style.display = 'block';
@@ -266,7 +270,7 @@
             const blocksData = await blocksRes.json();
             const pendingTx = await pendingRes.json();
 
-            renderPendingTransactions(pendingTx);
+ 
             renderBlocks(blocksData);
             renderLatestTransactions(pendingTx);
         }
@@ -285,12 +289,43 @@
             return li;
         }
         
-        function renderPendingTransactions(transactions) {
-            const container = document.getElementById('pending-list');
-            container.innerHTML = '';
-            const sorted = [...transactions].sort((a, b) => a.timestamp - b.timestamp).slice(0, 9);
-            sorted.forEach(tx => container.appendChild(createTransactionItem(tx)));
+        function renderPendingTransactions(block) {
+            const container = document.getElementById('proposed-block');
+            container.innerHTML = ''; 
+
+            if (!block || !block.transactions) {
+                container.textContent = 'No transactions found.';
+                return;
+            }
+
+            const header = document.createElement('h3');
+            header.textContent = 'Proposed Block';
+            container.appendChild(header);
+
+            const fields = [
+                ['Hash', block.hash],
+                ['Index', block.index],
+                ['Previous Hash', block.previous_hash],
+                ['Timestamp', new Date(block.timestamp * 1000).toLocaleString()],
+            ];
+
+            for (const [label, value] of fields) {
+                const p = document.createElement('p');
+                p.innerHTML = `<strong>${label}:</strong> ${value}`;
+                container.appendChild(p);
+            }
+
+            const txHeader = document.createElement('h4');
+            txHeader.textContent = 'Transactions:';
+            container.appendChild(txHeader);
+
+            const ul = document.createElement('ul');
+            for (const tx of block.transactions) {
+                ul.appendChild(createTransactionItem(tx));
+            }
+            container.appendChild(ul);
         }
+
 
         function renderBlocks(blocks) {
             const container = document.getElementById('blocks-container');
