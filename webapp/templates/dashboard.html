@@ -240,8 +240,7 @@
                     <!-- JS will populate proposed block here -->
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button class="approve-btn" onclick="approveBlock()">Approve</button>
-                    <button class="reject-btn" onclick="rejectBlock()">Reject</button>
+
                 </div>
             </div>
         </div>
@@ -283,14 +282,12 @@
                 renderPendingTransactions(data);
 
                 window.latestProposedBlockHash = data.hash || null;
-                document.querySelector('.approve-btn').style.display = 'block';
-                document.querySelector('.reject-btn').style.display = 'block';
+
                 console.log("Loaded proposed block:", data.hash);
             } catch (err) {
                 console.log('No active proposal.');
                 window.latestProposedBlockHash = null;
-                document.querySelector('.approve-btn').style.display = 'none';
-                document.querySelector('.reject-btn').style.display = 'none';
+
             }
         }
 
