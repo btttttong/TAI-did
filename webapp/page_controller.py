@@ -1,4 +1,4 @@
-from flask import render_template
+from flask import render_template, session, redirect
 from flask.views import MethodView
 
 class PageController(MethodView):
