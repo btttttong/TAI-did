@@ -83,7 +83,6 @@ class BlockchainCommunity(Community, PeerObserver):
     def on_peer_removed(self, peer: Peer):
         print(f"[{self.node_id}] Peer {peer.mid.hex()} removed.")
 
-
     def started(self):
         self.network.add_peer_observer(self)
         self.add_message_handler(Transaction, self.on_transaction_received)
@@ -109,6 +108,30 @@ class BlockchainCommunity(Community, PeerObserver):
         if len(self.blockchain.pending_transactions) >= self.blockchain.max_block_size:
             self.propose_block()
 
+    def voting_decision(self, block_hash: bytes, decision: str):
+        # TODO: Implement the voting decision method
+        if self.developer_mode == 1:
+            print("Voting decision in progress")
+        # <------------>
+        accepted_choices = ["accept", "reject"]
+        if decision not in accepted_choices:
+            if self.developer_mode == 1:
+                print("(!) Failure to make a decision")
+            print(f"[{self.node_id}] Invalid decision -> '{decision}' must be '{accepted_choices[0]}' or '{accepted_choices[1]}'")
+            return
+
+        if decision == accepted_choices[0]:
+            # > Accepted choices <
+            self.create_and_broadcast_vote(block_hash=block_hash, decision=decision)
+            if self.developer_mode == 1:
+                print("Accepted broadcast signal completed")
+        elif decision == accepted_choices[1]:
+            # > Rejected choice <
+            if self.developer_mode == 1:
+                print("Rejection acknowledged. Broadcast dormant")
+        # <------------>
+        if self.developer_mode == 1:
+            print("Voting decision has been made")
 
     def propose_block(self):
         if self.current_proposed_block is not None:
@@ -126,7 +149,6 @@ class BlockchainCommunity(Community, PeerObserver):
         if self.current_proposed_block:
             return self.current_proposed_block.to_dict()
         return None
-
 
     def create_and_broadcast_transaction(self, recipient_id, issuer_id, cert_hash, db_id):
         timestamp = time()
@@ -195,10 +217,7 @@ class BlockchainCommunity(Community, PeerObserver):
                     if self.troll_master == "ACTIVE":
                         print("You think I didn't consider this? Nah. We take this seriously.")
                         print("Yours truly E3N_7274 has fucked your plan to resend your last vote ;)")
-                        if self.TTS_soul_snatcher == True:
-                            phrases_A = ["You think I didn't consider this? Nah. We take this seriously.",
-                                         "Yours truly E3N_7274 has fucked your plan to resend your last vote"]
-                            # > TTS <
+
                 return
 
             self.seen_message_hashes.add(vote_ID)
@@ -238,10 +257,7 @@ class BlockchainCommunity(Community, PeerObserver):
                     if self.troll_master == "ACTIVE":
                         print("Im sorry you think we didn't plan for you?!?!?!\n🖕")
                         print("I DECLARE YOU SHALL NOT PASS")
-                        if self.TTS_soul_snatcher == True:
-                            phrases_B = ["I am sorry you think we didn't plan for you",
-                                         "I DECLARE YOU SHALL NOT PASS"]
-                            # > TTS deployment <
+
                 return
 
         block_hash_str = vote.block_hash.hex()
@@ -335,6 +351,8 @@ def start_node(node_id, developer_mode, web_port=None):
                           default_bootstrap_defs, {}, [('started', )])
 
         ipv8 = IPv8(builder.finalize(), extra_communities={'BlockchainCommunity': BlockchainCommunity})
+        if developer_mode == True:
+            print("IPV8 finalized. Deployment cleared.")
 
         try:
             await ipv8.start()

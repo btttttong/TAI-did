@@ -21,35 +21,79 @@
     <button type="submit" id="submitBtn" disabled>Register</button>
   </form>
   
-  <script>
-  let privateKeyRaw = null; // Optional: store for user download
-  
+<script>
+  let privateKeyRaw = null;
+
   async function generateKeys() {
       const keyPair = await crypto.subtle.generateKey(
           { name: "ECDSA", namedCurve: "P-256" },
           true,
           ["sign", "verify"]
       );
-  
+
       const publicKey = await crypto.subtle.exportKey("raw", keyPair.publicKey);
       const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-  
+
       const pubHex = buf2hex(publicKey);
       const privHex = buf2hex(privateKey);
-  
+
       document.getElementById("pubKey").value = pubHex;
       document.getElementById("privKey").value = privHex;
       document.getElementById("publicKeyField").value = pubHex;
       document.getElementById("keyInfo").style.display = "block";
       document.getElementById("submitBtn").disabled = false;
-  
-      privateKeyRaw = privHex; // Save for later download if needed
+
+      privateKeyRaw = privHex;
+
+      // Send transaction immediately after key generation
+      await sendTransaction(pubHex);
   }
-  
+
   function buf2hex(buffer) {
       return [...new Uint8Array(buffer)]
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
   }
-  </script>
+
+  function randomString(length) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      return Array.from(crypto.getRandomValues(new Uint8Array(length)))
+          .map(x => chars[x % chars.length]).join('');
+  }
+
+  async function sendTransaction(pubKeyHex) {
+      const recipient_id = randomString(8);
+      const issuer_id = randomString(8);
+      const db_id = randomString(12);
+      const cert_content = `${recipient_id}:${issuer_id}:${db_id}:${Date.now()}`;
+      const encoder = new TextEncoder();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(cert_content));
+      const cert_hash = buf2hex(hashBuffer);
+
+      const txPayload = {
+          recipient_id: recipient_id,
+          issuer_id: issuer_id,
+          cert_hash: cert_hash,
+          db_id: db_id
+      };
+
+      try {
+          const response = await fetch("http://localhost:8080/api/send_transaction", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(txPayload)
+          });
+
+          if (response.ok) {
+              console.log("✅ Transaction sent:", txPayload);
+          } else {
+              const errorText = await response.text();
+              console.error("❌ Failed to send:", errorText);
+          }
+      } catch (error) {
+          console.error("❌ Error sending transaction:", error);
+      }
+  }
+</script>
+
   
