@@ -41,11 +41,12 @@ class CertController:
             issuer_id = data.get("issuer_id")
             cert_hash = data.get("cert_hash")
             db_id = data.get("db_id")
+            public_key = data.get("public_key")
 
-            if not all([recipient_id, issuer_id, cert_hash, db_id]):
+            if not all([recipient_id, issuer_id, cert_hash, db_id, public_key]):
                 return jsonify({"error": "Missing required fields"}), 400
 
-            result = self.service.send_transaction(recipient_id, issuer_id, cert_hash, db_id)
+            result = self.service.send_transaction(recipient_id, issuer_id, cert_hash, db_id, public_key)
             return jsonify(result)
         except Exception as e:
             print("Exception in send_transaction:", e)

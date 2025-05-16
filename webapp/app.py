@@ -31,9 +31,9 @@ class MainWeb:
         "http://127.0.0.1:5050",
         ])
         self.app.config.update(
-        SESSION_COOKIE_DOMAIN="localhost",  # <--- Add this
-        SESSION_COOKIE_SAMESITE="Lax",      # or "None" if doing cross-origin fetches
-        SESSION_COOKIE_SECURE=False         # True if you're on HTTPS
+        SESSION_COOKIE_DOMAIN="localhost",
+        SESSION_COOKIE_SAMESITE="Lax",    
+        SESSION_COOKIE_SECURE=False
         )   
         self.app.secret_key = 'secret-key' 
 
@@ -51,7 +51,6 @@ class MainWeb:
         def ignore_chrome_devtools_request():
             return "Not Found", 404
         
-
     def _add_login_protection(self):
         @self.app.before_request
         def require_login():

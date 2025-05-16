@@ -1,7 +1,7 @@
 from flask import jsonify, render_template
-
+import uuid
 from binascii import unhexlify
-from models.cert import CertificateRepository
+from models.cert import CertificateRepository, Certificate
 
 class CertService:
     def __init__(self, community):
@@ -29,7 +29,13 @@ class CertService:
 
         return transactions
 
-    def send_transaction(self, recipient_id, issuer_id, cert_hash, db_id):
+    def send_transaction(self, recipient_id, issuer_id, cert_hash, db_id, public_key):
+        cert = Certificate(
+            cert_id=str(uuid.uuid4()),
+            user_public_key=public_key,
+            cert_hash=str(uuid.uuid1())
+        )
+        self.repo.add_certificate(cert)
         result = self.community.create_and_broadcast_transaction(
             recipient_id, issuer_id, cert_hash, db_id
         )
